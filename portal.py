@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from io import BytesIO
+from ipaddress import ip_address
 import json
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
@@ -69,9 +70,33 @@ def google_ready():
                 and google.get("client_id") and google.get("client_secret"))
 
 
+def login_redirect_error(current_url, redirect_uri):
+    """Detecta uma configuração local usada no login do site publicado."""
+    if not current_url or not redirect_uri:
+        return None
+    current, target = urlsplit(current_url), urlsplit(redirect_uri)
+
+    def local(hostname):
+        hostname = (hostname or "").lower().rstrip(".")
+        if hostname == "localhost" or hostname.endswith(".localhost"):
+            return True
+        try:
+            address = ip_address(hostname)
+            return address.is_loopback or address.is_unspecified
+        except ValueError:
+            return False
+
+    if current.hostname and not local(current.hostname) and local(target.hostname):
+        callback = urlunsplit((current.scheme, current.netloc, "/oauth2callback", "", ""))
+        return ("O login Google está configurado com um endereço de retorno local. "
+                "Em Settings → Secrets do Streamlit, altere redirect_uri na seção [auth] para "
+                f"{callback} e salve.")
+    return None
+
+
 def canonical_login_url(current_url, redirect_uri):
     """Evita iniciar o OAuth num domínio diferente do endereço de retorno."""
-    if not current_url or not redirect_uri:
+    if not current_url or not redirect_uri or login_redirect_error(current_url, redirect_uri):
         return None
     current, target = urlsplit(current_url), urlsplit(redirect_uri)
     if target.scheme not in ("http", "https") or not target.hostname:
@@ -248,14 +273,18 @@ def login():
         return
     with st.container(width=460):
         st.write("Use sua conta Google para acessar seu perfil. Recursos de gestão dependem de autorização.")
-        ready = google_ready()
-        canonical = canonical_login_url(st.context.url, auth_configuration().get("redirect_uri")) if ready else None
+        redirect_uri = auth_configuration().get("redirect_uri")
+        error = login_redirect_error(st.context.url, redirect_uri)
+        ready = google_ready() and not error
+        canonical = canonical_login_url(st.context.url, redirect_uri) if ready else None
         if canonical:
             st.link_button("Entrar com Google", canonical, type="primary", width="stretch")
         else:
             st.button("Entrar com Google", on_click=st.login, args=["google"],
                       type="primary", width="stretch", disabled=not ready)
-        if not google_ready():
+        if error:
+            st.error(error)
+        elif not ready:
             st.info("O acesso com Google ainda está em configuração.")
 
 
