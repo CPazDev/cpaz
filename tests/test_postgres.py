@@ -24,6 +24,8 @@ class PortabilityTests(unittest.TestCase):
         for message,expected in (('password authentication failed secret-password','Autenticação recusada'),
                                  ('Tenant or user not found secret-password','não reconheceu'),
                                  ('connection timeout secret-password','tempo limite'),
+                                 ('MaxClientsInSessionMode: max clients reached secret-password','limite de conexões'),
+                                 ('connection failed: Network is unreachable secret-password','rede do servidor'),
                                  ('could not translate host name secret-password','DNS'),
                                  ('unexpected postgresql://user:secret-password@example.com/db','não classificada')):
             result=persistencia.connection_error(Exception(message))

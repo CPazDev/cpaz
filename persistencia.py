@@ -134,11 +134,11 @@ def connection_error(error):
     code=getattr(original,'sqlstate',None)
     message=str(original).lower()
     reason='Falha de conexão não classificada; confira a configuração privada do banco.'
-    if code=='28P01' or 'password authentication failed' in message:
+    if code=='28P01' or any(term in message for term in ('password authentication failed','wrong password','sasl authentication failed')):
         reason='Autenticação recusada pelo banco. Confira a senha na configuração privada.'
     elif 'tenant or user not found' in message:
         reason='O pooler não reconheceu o usuário ou projeto. Confira a conexão Session pooler.'
-    elif code=='53300' or 'max client connections' in message or 'too many clients' in message:
+    elif code=='53300' or any(term in message for term in ('max client connections','too many clients','maxclientsinsessionmode','max clients reached')):
         reason='O pooler atingiu o limite de conexões. Feche instâncias ociosas e tente novamente.'
     elif 'could not translate host name' in message or 'name or service not known' in message or 'nodename nor servname' in message:
         reason='Não foi possível resolver o endereço do banco (DNS).'
@@ -146,10 +146,24 @@ def connection_error(error):
         reason='A conexão com o banco excedeu o tempo limite. Confira acesso à rede e Session pooler.'
     elif 'connection refused' in message:
         reason='O servidor recusou a conexão. Confira o endereço e a porta do Session pooler.'
+    elif 'network is unreachable' in message or 'no route to host' in message:
+        reason='A rede do servidor não consegue alcançar o banco. Use o endereço IPv4 do Session pooler.'
+    elif 'circuit breaker' in message or 'upstream database' in message:
+        reason='O pooler não conseguiu conectar ao banco de origem.'
+    elif 'no pg_hba.conf entry' in message:
+        reason='O banco recusou a origem da conexão. Confira as restrições de rede do projeto.'
+    elif 'server closed the connection' in message:
+        reason='O servidor encerrou a conexão antes da autenticação.'
     elif 'ssl' in message or 'certificate' in message:
         reason='Falha na conexão TLS com o banco.'
     elif type(original).__name__ in ('ArgumentError','ValueError'):
         reason='Formato inválido da conexão PostgreSQL em database.url.'
-    elif isinstance(original,ModuleNotFoundError):
+    elif isinstance(original,ImportError):
         reason='A dependência PostgreSQL não foi instalada.'
-    return 'Não foi possível conectar ao PostgreSQL. '+reason
+    elif message=='o banco remoto precisa ser postgresql.':
+        reason='O protocolo em database.url não é PostgreSQL.'
+    # Somente classe e código SQL padronizado; nunca o texto da exceção externa.
+    category=type(original).__name__
+    category=category if re.fullmatch(r'[A-Za-z_]{1,60}',category) else 'Erro'
+    safe_code=code if isinstance(code,str) and re.fullmatch(r'[A-Z0-9]{5}',code) else 'ausente'
+    return 'Não foi possível conectar ao PostgreSQL. '+reason+f' [Tipo: {category}; SQLSTATE: {safe_code}]'
