@@ -64,22 +64,48 @@ class DirectoryTests(unittest.TestCase):
         self.assertEqual([len(groups[c]) for c in directory.TABS], [1, 1, 1, 0])
         self.assertNotIn(self.community, [p["id"] for p in people[directory.LEADERS]])
 
-    def test_clicking_indicators_filters_exactly_the_counted_people(self):
+    def test_clicking_indicators_opens_lists_including_community_leaders(self):
         app = self.app()
         key = "directory_" + self.cev
         self.assertEqual([tab.label for tab in app.tabs], list(directory.TABS))
         initial_names = set(app.dataframe[0].value["Nome"])
         self.assertEqual(initial_names, {"Membro da obra", "Pastor da comunidade", "Núcleo da obra"})
         self.assertNotIn("Grupo inativo", [h.value for h in app.subheader])
-        for label, expected in ((directory.MEMBERS, "Membro da obra"), (directory.COMMUNITY, "Pastor da comunidade"), (directory.LEADERS, "Núcleo da obra")):
+        for label, expected in ((directory.MEMBERS, {"Membro da obra"}),
+                                (directory.COMMUNITY, {"Pastor da comunidade"}),
+                                (directory.LEADERS, {"Núcleo da obra", "Pastor da comunidade"})):
             self.click(app, key + "_indicator_" + label)
             self.assertEqual(app.session_state[key + "_tabs"], "Ativos")
             self.assertEqual(app.selectbox(key=key + "_filter").value, label)
-            self.assertEqual(list(app.dataframe[0].value["Nome"]), [expected])
+            self.assertEqual(set(app.dataframe[0].value["Nome"]), expected)
             self.assertFalse(any(h.value == "Grupo ativo" for h in app.subheader))
+        self.assertEqual(app.button(key=key + "_indicator_" + directory.LEADERS).label,
+                         "**1** " + directory.LEADERS)
+        self.assertIn(directory.LEADERS + " · 2", [h.value for h in app.subheader])
         self.click(app, key + "_indicator_" + directory.GROUPS)
         self.assertEqual(len(app.dataframe), 0)
         self.assertIn("Grupo ativo", [h.value for h in app.subheader])
+
+    def test_leaders_list_includes_community_nucleus_and_excludes_inactive_and_review(self):
+        community_nucleus = db.save_person(self.cev, "Núcleo da comunidade", "Núcleo", "",
+                                           self.active_group, ativo=1, eh_comunidade=1)
+        db.save_person(self.cev, "Pastor inativo", "Pastor", "", self.active_group,
+                       ativo=0, eh_comunidade=1)
+        db.save_person(self.cev, "Pastor sem pertencimento", "Pastor", "", self.active_group, ativo=1)
+        db.save_person(self.cev, "Membro da comunidade", "Membro", "", self.active_group,
+                       ativo=1, eh_comunidade=1)
+        self.assertEqual({p["id"] for p in directory.leaders(db.people(self.cev))},
+                         {self.community, self.nucleus, community_nucleus})
+        app = self.app()
+        key = "directory_" + self.cev
+        app.selectbox(key=key + "_filter").select(directory.LEADERS).run()
+        self.assertFalse(app.exception, [e.message for e in app.exception])
+        self.assertEqual(set(app.dataframe[0].value["Nome"]),
+                         {"Pastor da comunidade", "Núcleo da obra", "Núcleo da comunidade"})
+        self.assertEqual(app.button(key=key + "_indicator_" + directory.COMMUNITY).label,
+                         "**3** " + directory.COMMUNITY)
+        self.assertEqual(app.button(key=key + "_indicator_" + directory.LEADERS).label,
+                         "**1** " + directory.LEADERS)
 
     def test_inactive_and_review_navigation_then_return_to_active_indicator(self):
         app = self.app()

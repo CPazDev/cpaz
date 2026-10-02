@@ -43,6 +43,12 @@ def engaged(people):
     return [p for p in people if people_category(p) in (MEMBERS, LEADERS) and p["ministerio"].strip()]
 
 
+def leaders(people):
+    """Lista por categoria; a comunidade mantém sua contagem exclusiva."""
+    return [p for p in people if p["categoria"] in ("Pastor", "Núcleo")
+            and people_category(p) in (COMMUNITY, LEADERS)]
+
+
 def _open(key, tab, category="Todos"):
     st.session_state[key + "_tabs"] = tab
     st.session_state[key + "_filter"] = category
@@ -128,8 +134,9 @@ def cev(name, people, groups):
                 (len(categories[MEMBERS]), len(categories[COMMUNITY]), len(categories[LEADERS]), len(engaged(people)), len(group_lists["Ativos"]))):
             with column:
                 st.button(f"**{count}** {label}", key=key + "_indicator_" + label, width="stretch",
-                          on_click=_open, args=(key, "Ativos", label), help="Abrir a lista correspondente")
-    st.caption("Somente registros ativos. Pastores e núcleo da comunidade aparecem apenas em Comunidade. Engajados: pessoas da obra com ministério cadastrado.")
+                          on_click=_open, args=(key, "Ativos", label),
+                          help="Ver todos os pastores e núcleo ativos, incluindo os da comunidade" if label == LEADERS else "Abrir a lista correspondente")
+    st.caption("Somente registros ativos. Nas contagens, pastores e núcleo da comunidade entram apenas em Comunidade. Engajados: pessoas da obra com ministério cadastrado.")
     with st.container(horizontal=True):
         for tab in ("Inativos", "Revisão", NEUTRAL):
             count = len(categories.get(tab, [])) + len(group_lists[tab])
@@ -156,7 +163,9 @@ def cev(name, people, groups):
                 st.info("Confirme Ativo e, para pessoas, Pertence à comunidade. Estes cadastros não entram nos indicadores.")
             selected_people = ([p for p in people if people_category(p) in (MEMBERS, COMMUNITY, LEADERS)]
                                if tab == "Ativos" else categories[tab])
-            if selected in (MEMBERS, COMMUNITY, LEADERS):
+            if selected == LEADERS:
+                selected_people = leaders(people)
+            elif selected in (MEMBERS, COMMUNITY):
                 selected_people = categories[selected]
             elif selected == ENGAGED:
                 selected_people = engaged(people)
@@ -166,6 +175,10 @@ def cev(name, people, groups):
                 group_list(selected_groups, key + "_" + tab)
             if selected != GROUPS:
                 st.subheader(f"{selected if selected in (MEMBERS, COMMUNITY, LEADERS, ENGAGED) else 'Pessoas'} · {len(selected_people)}")
+                if selected == LEADERS:
+                    community_count = sum(p["eh_comunidade"] == 1 for p in selected_people)
+                    st.caption(f"{len(selected_people) - community_count} da obra · {community_count} da comunidade. "
+                               "Os da comunidade aparecem nesta lista e são contados somente no indicador Comunidade.")
                 person_list(selected_people, key)
 
 

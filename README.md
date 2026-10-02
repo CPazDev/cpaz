@@ -194,6 +194,10 @@ indicador adicional: pessoas ativas que não pertencem à comunidade e possuem
 ministério preenchido, incluindo Membro, Pastor e Núcleo. O indicador abre a lista
 correspondente. Grupos contam somente quando ativos e não são vínculos neutros.
 
+A lista **Pastores e núcleo** inclui também os pastores e núcleos ativos da
+comunidade. Ela mostra a divisão entre obra e comunidade; estes últimos continuam
+contados somente no indicador **Comunidade**, sem duplicar as contagens.
+
 CAL e C. Vida de Paraipaba são **vínculos neutros**: mantêm as pessoas vinculadas,
 mas não contam como grupos de oração. A gestão os encontra na aba **Vínculos neutros**.
 A marcação **Vínculo neutro (não contar como grupo de oração)** pode ser editada
