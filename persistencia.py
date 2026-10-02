@@ -116,8 +116,8 @@ def connection(url):
     from sqlalchemy.exc import IntegrityError
     try:
         raw = engine(url).connect()
-    except Exception:
-        raise RuntimeError('Não foi possível conectar ao PostgreSQL. Confira a configuração privada do banco.') from None
+    except Exception as error:
+        raise RuntimeError(connection_error(error)) from None
     try:
         with raw.begin():
             raw.execute(text('SET LOCAL search_path TO portal'))
@@ -126,3 +126,30 @@ def connection(url):
         raise sqlite3.IntegrityError('Vínculo inválido ou registro duplicado.') from None
     finally:
         raw.close()
+
+
+def connection_error(error):
+    """Classifica falhas sem registrar a URL, a senha ou o erro original."""
+    original=getattr(error,'orig',error)
+    code=getattr(original,'sqlstate',None)
+    message=str(original).lower()
+    reason='Falha de conexão não classificada; confira a configuração privada do banco.'
+    if code=='28P01' or 'password authentication failed' in message:
+        reason='Autenticação recusada pelo banco. Confira a senha na configuração privada.'
+    elif 'tenant or user not found' in message:
+        reason='O pooler não reconheceu o usuário ou projeto. Confira a conexão Session pooler.'
+    elif code=='53300' or 'max client connections' in message or 'too many clients' in message:
+        reason='O pooler atingiu o limite de conexões. Feche instâncias ociosas e tente novamente.'
+    elif 'could not translate host name' in message or 'name or service not known' in message or 'nodename nor servname' in message:
+        reason='Não foi possível resolver o endereço do banco (DNS).'
+    elif 'timeout' in message or 'timed out' in message:
+        reason='A conexão com o banco excedeu o tempo limite. Confira acesso à rede e Session pooler.'
+    elif 'connection refused' in message:
+        reason='O servidor recusou a conexão. Confira o endereço e a porta do Session pooler.'
+    elif 'ssl' in message or 'certificate' in message:
+        reason='Falha na conexão TLS com o banco.'
+    elif type(original).__name__ in ('ArgumentError','ValueError'):
+        reason='Formato inválido da conexão PostgreSQL em database.url.'
+    elif isinstance(original,ModuleNotFoundError):
+        reason='A dependência PostgreSQL não foi instalada.'
+    return 'Não foi possível conectar ao PostgreSQL. '+reason

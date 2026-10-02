@@ -20,6 +20,14 @@ class PortabilityTests(unittest.TestCase):
     def test_parameters_keep_literals_and_quotes(self):
         sql,values=persistencia.bind_sql("SELECT '?' AS literal, ? AS value, 'it''s ?' AS quoted",(7,))
         self.assertEqual(values,{'p0':7});self.assertEqual(sql.count(':p0'),1)
+    def test_connection_diagnostics_never_include_credentials(self):
+        for message,expected in (('password authentication failed secret-password','Autenticação recusada'),
+                                 ('Tenant or user not found secret-password','não reconheceu'),
+                                 ('connection timeout secret-password','tempo limite'),
+                                 ('could not translate host name secret-password','DNS'),
+                                 ('unexpected postgresql://user:secret-password@example.com/db','não classificada')):
+            result=persistencia.connection_error(Exception(message))
+            self.assertIn(expected,result);self.assertNotIn('secret-password',result);self.assertNotIn('example.com',result)
     def test_metadata_preserves_constraints_and_binary(self):
         with tempfile.TemporaryDirectory() as tmp,patch.object(db,'DATABASE',Path(tmp)/'db.sqlite3'):
             db.initialize()
