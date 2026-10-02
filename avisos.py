@@ -2,6 +2,7 @@
 
 import streamlit as st
 from datetime import datetime
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 import access
@@ -53,12 +54,28 @@ def visible(claims, cev=None, group_id=None, ministry_id=None):
             clauses.append("(n.destino='Grupo' AND n.cev=? AND n.grupo_id=?)")
             params.extend((group["cev"], group["id"]))
     return db.query("SELECT n.*,g.nome AS grupo,m.nome AS ministerio FROM notices n LEFT JOIN groups g ON g.id=n.grupo_id LEFT JOIN ministries m ON m.id=n.ministerio_id WHERE "
-                    + " OR ".join(clauses) + " ORDER BY n.id DESC", params)
+                    + " OR ".join(clauses) + " ORDER BY n.publicado_em IS NULL, n.publicado_em DESC, n.id DESC", params)
+
+
+def _select_page(key, page):
+    st.session_state[key] = page
 
 
 def render(claims, cev=None, group_id=None, configured=(), ministry_id=None):
     notices = visible(claims, cev, group_id, ministry_id)
-    for notice in notices:
+    configured = list(configured)
+    total = len(notices) + len(configured)
+    if not total:
+        st.info("Nenhum aviso publicado.")
+        return
+    page_count = (total + 2) // 3
+    path = urlsplit(st.context.url or "").path
+    email = access.verified_email(claims) or "public"
+    page_key = f"notice_page_{path!r}_{email}_{cev!r}_{group_id}_{ministry_id}"
+    page = max(0, min(st.session_state.get(page_key, 0), page_count - 1))
+    st.session_state[page_key] = page
+    start, end = page * 3, (page + 1) * 3
+    for notice in notices[start:end]:
         with st.container(border=True):
             st.subheader(notice["titulo"])
             if notice["destino"] == "Geral":
@@ -77,10 +94,17 @@ def render(claims, cev=None, group_id=None, configured=(), ministry_id=None):
                                                            key=f'notice_event_open_{notice["id"]}'):
                 st.session_state["selected_event"] = notice["evento_id"]
                 st.switch_page(st.session_state["pages"]["event"])
-    for text in configured:
+    for text in configured[max(0, start - len(notices)):max(0, end - len(notices))]:
         with st.container(border=True):
             st.caption("Geral · Público")
             st.caption("Data de publicação não registrada")
             st.write(text)
-    if not notices and not configured:
-        st.info("Nenhum aviso publicado.")
+    if page_count > 1:
+        previous, indicator, following = st.columns([1, 2, 1])
+        previous.button("Anterior", icon=":material/chevron_left:", width="stretch",
+                        disabled=page == 0, key=page_key + "_previous",
+                        on_click=_select_page, args=(page_key, page - 1))
+        indicator.caption(f"Página {page + 1} de {page_count} · {total} avisos")
+        following.button("Próxima", icon=":material/chevron_right:", width="stretch",
+                         disabled=page == page_count - 1, key=page_key + "_next",
+                         on_click=_select_page, args=(page_key, page + 1))
