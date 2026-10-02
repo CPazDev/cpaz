@@ -188,15 +188,22 @@ Na gestão do CEv, os indicadores abrem suas listas filtradas. Somente registros
 ativos e com pertencimento à comunidade informado entram nas contagens de pessoas:
 **Membros da obra** são da categoria Membro e não pertencem à comunidade;
 **Comunidade** reúne todos os que pertencem à comunidade, inclusive pastor e núcleo;
-**Pastores e núcleo** reúne essas categorias quando não pertencem à comunidade.
-Cada pessoa entra em uma única dessas três contagens. **Membros engajados** é um
+**Pastores e núcleo** reúne essas categorias, incluindo as pessoas da comunidade.
+Pastores e núcleos da comunidade entram nos dois indicadores; os indicadores não
+devem ser somados como um total de pessoas. **Membros engajados** é um
 indicador adicional: pessoas ativas que não pertencem à comunidade e possuem
 ministério preenchido, incluindo Membro, Pastor e Núcleo. O indicador abre a lista
 correspondente. Grupos contam somente quando ativos e não são vínculos neutros.
 
-A lista **Pastores e núcleo** inclui também os pastores e núcleos ativos da
-comunidade. Ela mostra a divisão entre obra e comunidade; estes últimos continuam
-contados somente no indicador **Comunidade**, sem duplicar as contagens.
+A lista **Pastores e núcleo** mostra a mesma quantidade do indicador e a divisão
+entre obra e comunidade.
+
+Selecione uma linha da lista de pessoas (ou use o seletor) para abrir o perfil
+em cartões, com foto e os dados do cadastro. A consulta é restrita aos
+administradores, gestores do respectivo CEv e responsáveis de grupo autorizados
+cuja conta esteja vinculada a um Pastor/Núcleo do mesmo grupo. O vínculo pessoal
+sozinho não concede acesso de gestão. A edição continua sujeita às permissões
+existentes, e exclusão depende de concessão explícita.
 
 CAL e C. Vida de Paraipaba são **vínculos neutros**: mantêm as pessoas vinculadas,
 mas não contam como grupos de oração. A gestão os encontra na aba **Vínculos neutros**.

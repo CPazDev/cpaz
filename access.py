@@ -43,6 +43,27 @@ def can_use_group(user, group):
                 and user["cev"] == group["cev"] and user["grupo_id"] == group["id"]))
 
 
+def can_view_group_people(user, group):
+    if can_manage_cev(user, group["cev"]):
+        return True
+    if not can_use_group(user, group):
+        return False
+    return bool(db.query("""SELECT 1 FROM account_profiles a JOIN people p ON p.id=a.membro_id
+        WHERE a.email=? AND p.cev=? AND p.categoria IN ('Pastor','Núcleo')
+        AND (p.grupo_id=? OR p.id=?)""",
+        (user["email"], group["cev"], group["id"], group.get("pastor_id"))))
+
+
+def can_view_person(user, person):
+    if can_manage_cev(user, person["cev"]):
+        return True
+    if not user or user["nivel"] != "Responsável de grupo" or person["cev"] != user.get("cev"):
+        return False
+    groups = db.query("SELECT * FROM groups WHERE id=? AND cev=?", (user["grupo_id"], person["cev"]))
+    return bool(groups and (person.get("grupo_id") == groups[0]["id"] or person["id"] == groups[0]["pastor_id"])
+                and can_view_group_people(user, groups[0]))
+
+
 def can_manage_accounts(user):
     return bool(user and user["nivel"] in ("Administrador", "Gestor de CEv"))
 

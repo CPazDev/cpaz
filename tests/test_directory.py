@@ -11,6 +11,8 @@ from streamlit.testing.v1 import AppTest
 
 import database as db
 import diretorio as directory
+import access
+import perfis
 import portal
 
 
@@ -80,7 +82,7 @@ class DirectoryTests(unittest.TestCase):
             self.assertEqual(set(app.dataframe[0].value["Nome"]), expected)
             self.assertFalse(any(h.value == "Grupo ativo" for h in app.subheader))
         self.assertEqual(app.button(key=key + "_indicator_" + directory.LEADERS).label,
-                         "**1** " + directory.LEADERS)
+                         "**2** " + directory.LEADERS)
         self.assertIn(directory.LEADERS + " · 2", [h.value for h in app.subheader])
         self.click(app, key + "_indicator_" + directory.GROUPS)
         self.assertEqual(len(app.dataframe), 0)
@@ -105,7 +107,7 @@ class DirectoryTests(unittest.TestCase):
         self.assertEqual(app.button(key=key + "_indicator_" + directory.COMMUNITY).label,
                          "**3** " + directory.COMMUNITY)
         self.assertEqual(app.button(key=key + "_indicator_" + directory.LEADERS).label,
-                         "**1** " + directory.LEADERS)
+                         "**3** " + directory.LEADERS)
 
     def test_inactive_and_review_navigation_then_return_to_active_indicator(self):
         app = self.app()
@@ -156,6 +158,26 @@ class DirectoryTests(unittest.TestCase):
         app.run()
         self.assertFalse(app.exception)
         self.assertEqual(list(app.dataframe[0].value["Nome"]), ["Pessoa inativa"])
+
+    def test_group_leader_opens_own_group_profile_and_loses_access_after_unlink(self):
+        leader = dict(self.admin, email="lider@example.com")
+        access.grant(self.admin, leader["email"], "Responsável de grupo", self.cev, self.active_group)
+        perfis.link(self.admin, leader["email"], self.community)
+        db.save_person(self.cev, "Pessoa de outro grupo", "Membro", "Contato privado",
+                       self.inactive_group, ativo=1, eh_comunidade=0)
+        app = self.app(leader)
+        self.page(app, "group")
+        key = f'group_people_{self.active_group}_Ativos_person'
+        app.selectbox(key=key).select(self.member).run()
+        self.assertFalse(app.exception)
+        self.assertIn("Perfil do membro", [h.value for h in app.subheader])
+        self.assertFalse(any(button.label == "Editar esta pessoa" for button in app.button))
+        self.assertNotIn("Pessoa de outro grupo", str(app))
+        perfis.link(self.admin, leader["email"], None)
+        app.run()
+        self.assertFalse(app.exception)
+        self.assertNotIn("Perfil do membro", [h.value for h in app.subheader])
+        self.assertEqual(len(app.dataframe), 0)
 
     def test_neutral_links_are_not_groups_and_survive_rename(self):
         import crud

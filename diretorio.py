@@ -1,9 +1,12 @@
-"""Listas e indicadores do CEv com categorias sem dupla contagem."""
+"""Listas e indicadores do CEv com filtros de ativos, inativos e revisão."""
 
 import streamlit as st
+from hashlib import sha256
+from functools import partial
 
 import access
 import edicao
+import perfil_membro
 
 MEMBERS = "Membros da obra"
 COMMUNITY = "Comunidade"
@@ -44,7 +47,7 @@ def engaged(people):
 
 
 def leaders(people):
-    """Lista por categoria; a comunidade mantém sua contagem exclusiva."""
+    """Pastores e núcleos ativos, incluindo os da comunidade."""
     return [p for p in people if p["categoria"] in ("Pastor", "Núcleo")
             and people_category(p) in (COMMUNITY, LEADERS)]
 
@@ -65,13 +68,30 @@ def _ui():
     return portal
 
 
+def _select_person(key, row_key, ids):
+    rows = st.session_state[row_key]["selection"]["rows"]
+    if rows and 0 <= rows[0] < len(ids):
+        st.session_state[key + "_person"] = ids[rows[0]]
+    else:
+        st.session_state[key + "_person"] = None
+
+
 def person_list(people, key):
     ui = _ui()
-    ui.records(people, {"nome": "Nome", "categoria": "Categoria", "contato": "Contato", "grupo": "Grupo",
-                       "eh_comunidade": "Comunidade", "ativo": "Ativo"}, "Nenhuma pessoa nesta lista.")
+    claims = st.user.to_dict()
+    actor = access.profile(claims)
+    people = [p for p in people if access.can_view_person(actor, p)]
     if not people:
+        st.info("Nenhuma pessoa disponível nesta lista para sua conta.")
         return
     labels = {p["id"]: f'{p["nome"]} (#{p["id"]})' for p in people}
+    ids = list(labels)
+    row_key = key + "_rows_" + sha256(str(ids).encode()).hexdigest()[:16]
+    display = [{"Nome": p["nome"], "Categoria": p["categoria"], "Contato": p["contato"], "Grupo": p.get("grupo"),
+                "Comunidade": ui.status_label(p["eh_comunidade"]), "Ativo": ui.status_label(p["ativo"])} for p in people]
+    st.caption("Selecione uma linha para abrir o perfil, ou escolha a pessoa abaixo.")
+    st.dataframe(display, hide_index=True, width="stretch", key=row_key, selection_mode="single-row",
+                 on_select=partial(_select_person, key, row_key, ids))
     # Ao mudar de lista, uma seleção anterior não deve abrir outro cadastro.
     widget_key = key + "_person"
     if st.session_state.get(widget_key) not in labels:
@@ -81,16 +101,9 @@ def person_list(people, key):
     if person_id is None:
         return
     person = next(p for p in people if p["id"] == person_id)
-    with st.container(border=True):
-        if person["foto"]:
-            st.image(person["foto"], width=240)
-        ui.records([person], {"nome": "Nome", "categoria": "Categoria", "contato": "Contato",
-            "grupo": "Grupo", "instagram": "Instagram", "endereco": "Endereço",
-            "nascimento": "Data de nascimento", "acompanhador": "Acompanhador", "ministerio": "Ministério",
-            "email": "E-mail", "genero": "Gênero", "servico": "Serviço", "funcao_servico": "Função no serviço",
-            "eh_comunidade": "Pertence à comunidade", "ativo": "Ativo"}, "")
-        if access.can_manage_cev(access.profile(st.user.to_dict()), person["cev"]):
-            edicao.link("people", "Editar esta pessoa", person["id"], key=key + "_edit_person")
+    perfil_membro.render(person_id, claims)
+    if access.can_manage_cev(actor, person["cev"]):
+        edicao.link("people", "Editar esta pessoa", person["id"], key=key + "_edit_person")
 
 
 def group_list(groups, key):
@@ -131,12 +144,12 @@ def cev(name, people, groups):
         </style>""")
     with st.container(key="cev_indicators"):
         for column, label, count in zip(st.columns(5), (MEMBERS, COMMUNITY, LEADERS, ENGAGED, GROUPS),
-                (len(categories[MEMBERS]), len(categories[COMMUNITY]), len(categories[LEADERS]), len(engaged(people)), len(group_lists["Ativos"]))):
+                (len(categories[MEMBERS]), len(categories[COMMUNITY]), len(leaders(people)), len(engaged(people)), len(group_lists["Ativos"]))):
             with column:
                 st.button(f"**{count}** {label}", key=key + "_indicator_" + label, width="stretch",
                           on_click=_open, args=(key, "Ativos", label),
                           help="Ver todos os pastores e núcleo ativos, incluindo os da comunidade" if label == LEADERS else "Abrir a lista correspondente")
-    st.caption("Somente registros ativos. Nas contagens, pastores e núcleo da comunidade entram apenas em Comunidade. Engajados: pessoas da obra com ministério cadastrado.")
+    st.caption("Somente registros ativos. Pastores e núcleo inclui também os da comunidade, que continuam no indicador Comunidade. Engajados: pessoas da obra com ministério cadastrado.")
     with st.container(horizontal=True):
         for tab in ("Inativos", "Revisão", NEUTRAL):
             count = len(categories.get(tab, [])) + len(group_lists[tab])
@@ -178,7 +191,7 @@ def cev(name, people, groups):
                 if selected == LEADERS:
                     community_count = sum(p["eh_comunidade"] == 1 for p in selected_people)
                     st.caption(f"{len(selected_people) - community_count} da obra · {community_count} da comunidade. "
-                               "Os da comunidade aparecem nesta lista e são contados somente no indicador Comunidade.")
+                               "Todos entram no indicador Pastores e núcleo; os da comunidade entram também em Comunidade.")
                 person_list(selected_people, key)
 
 
