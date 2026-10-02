@@ -51,6 +51,9 @@ Em https://share.streamlit.io, escolha **Create app**, repositório `CPazDev/cpa
 branch `main`, entrada `app.py` e Python **3.14** em **Advanced settings**.
 Anote a URL real `https://SEU-APP.streamlit.app`.
 
+Não fixe a porta em `.streamlit/config.toml`: o Community Cloud verifica o serviço
+na porta 8501. No computador, use `--server.port 8502` no comando de execução.
+
 Gere os Secrets privados preservando a integração Google já configurada:
 
 ```powershell

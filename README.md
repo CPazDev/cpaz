@@ -12,7 +12,7 @@ No PowerShell, dentro desta pasta:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m streamlit run app.py
+.\.venv\Scripts\python.exe -m streamlit run app.py --server.port 8502
 ```
 
 Abra **http://localhost:8502**. A porta 8502 evita interromper o servidor que já

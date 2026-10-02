@@ -20,8 +20,6 @@ borderColor = "#334155"
 
 [server]
 headless = true
-# Porta de desenvolvimento local; o Community Cloud define a porta de execução.
-port = 8502
 
 [browser]
 gatherUsageStats = false
