@@ -2,12 +2,18 @@
 
 from html import escape
 from pathlib import Path
+from base64 import b64encode
 
 import streamlit as st
 
 import access
 import database as db
 import perfis
+
+
+def _logo(class_name):
+    data = b64encode(Path(__file__).with_name("logo.png").read_bytes()).decode("ascii")
+    return f'<img class="{class_name}" src="data:image/png;base64,{data}" alt="C-Paz">'
 
 
 def context(profile):
@@ -37,7 +43,7 @@ def context(profile):
 def footer(pages, profile):
     account = perfis.own(st.user.to_dict())
     if not account:
-        st.html('<div class="sidebar-profile"><div class="sidebar-avatar">CP</div>'
+        st.html('<div class="sidebar-profile">' + _logo("sidebar-avatar-logo") +
                 '<div class="sidebar-person"><strong>Bem-vindo</strong><small>Sua comunidade, conectada.</small></div></div>')
         st.page_link(pages["login"], label="Acessar minha conta", icon=":material/login:")
     else:
@@ -67,7 +73,7 @@ def render(pages, sections, profile):
     st.html("<style>" + css + "</style>")
     with st.sidebar, st.container(key="sidebar_shell"):
         with st.container(key="sidebar_header"):
-            st.html('<div class="sidebar-brand"><span class="sidebar-symbol">CP</span><div>'
+            st.html('<div class="sidebar-brand">' + _logo("sidebar-logo") + '<div>'
                     '<div class="portal-brand">C-Paz</div><div class="portal-subtitle">Sua comunidade, conectada.</div></div></div>')
             context(profile)
         with st.container(key="sidebar_menu"):

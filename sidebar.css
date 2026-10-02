@@ -13,7 +13,8 @@
 .st-key-sidebar_shell > div:has(.st-key-sidebar_account) {flex:0 0 auto;}
 .st-key-sidebar_header {gap:.7rem;padding:0 .2rem .9rem;border-bottom:1px solid color-mix(in srgb,currentColor 10%,transparent);}
 .sidebar-brand {display:flex;align-items:center;gap:12px;padding:0 0 .3rem;}
-.sidebar-symbol {display:grid;place-items:center;width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#177d73,#115e59);color:#fff;font-size:1.1rem;font-weight:800;box-shadow:0 5px 15px #177d7325;}
+.sidebar-logo {display:block;flex:0 0 48px;width:48px;height:48px;object-fit:contain;}
+.sidebar-avatar-logo {display:block;flex:0 0 40px;width:40px;height:40px;object-fit:contain;}
 .portal-brand {font-size:1.2rem;letter-spacing:-.025em;font-weight:750;line-height:1.25;margin:0;}
 .portal-subtitle {font-size:.72rem;line-height:1.6;color:color-mix(in srgb,currentColor 70%,transparent);margin:0;}
 .st-key-sidebar_menu [data-testid="stPageLink"] a {border-radius:12px;min-height:41px;padding:9px 12px;transition:background .15s;}
@@ -24,7 +25,7 @@
 .st-key-sidebar_menu [data-testid="stExpander"] details > summary {padding:.5rem .7rem;}
 .st-key-sidebar_menu [data-testid="stExpander"] details > summary p {font-size:.84rem;font-weight:650;}
 .st-key-sidebar_menu [data-testid="stExpanderDetails"] {padding:0 0 .4rem .25rem;}
-.st-key-sidebar_account {gap:.55rem;border-top:1px solid color-mix(in srgb,currentColor 12%,transparent);padding:1rem .2rem .1rem;}
+.st-key-sidebar_account {gap:.55rem;border:1px solid #ffffff20;border-radius:16px;background:#115e59;color:#f8fafc;padding:1rem .8rem .65rem;}
 .sidebar-profile {display:flex;align-items:center;gap:10px;min-width:0;}
 .sidebar-avatar {display:grid;place-items:center;flex:0 0 40px;height:40px;border-radius:13px;background:color-mix(in srgb,currentColor 9%,transparent);color:inherit;font-size:.82rem;font-weight:750;}
 .sidebar-person {min-width:0;flex:1;}
@@ -33,8 +34,12 @@
 .sidebar-context {display:flex;flex-wrap:wrap;align-items:center;gap:5px 8px;font-size:.68rem;line-height:1.5;}
 .sidebar-role {border:1px solid color-mix(in srgb,currentColor 14%,transparent);padding:3px 7px;border-radius:6px;font-size:.62rem;font-weight:600;}
 .sidebar-group {opacity:.8;overflow-wrap:anywhere;}
-.st-key-sidebar_account [data-testid="stPageLink"] a {border-radius:9px;padding:7px 8px;}
+.st-key-sidebar_account [data-testid="stPageLink"] a {border-radius:9px;padding:7px 8px;color:inherit;}
+.st-key-sidebar_account [data-testid="stPageLink"] a:hover {background:#ffffff12;}
+.st-key-sidebar_account button {background:transparent;color:inherit;border-color:#ffffff40;}
+.st-key-sidebar_account button:hover {background:#ffffff12;border-color:#ffffff80;color:inherit;}
+.st-key-sidebar_account [data-testid="stPageLink"] a p,.st-key-sidebar_account [data-testid="stPageLink"] a span {color:inherit;}
 .st-key-sidebar_account [data-testid="stPageLink"] p,.st-key-sidebar_account button p {font-size:.8rem;}
 .sidebar-theme-hint {font-size:.65rem;line-height:1.4;opacity:.6;margin-top:.15rem;}
-@media(max-height:650px) {.st-key-sidebar_header {padding-bottom:.6rem;}.st-key-sidebar_account {padding-top:.6rem;}.st-key-sidebar_menu {padding-top:.4rem;}}
+@media(max-height:650px) {.st-key-sidebar_header {padding-bottom:.6rem;}.st-key-sidebar_account {padding:.6rem .65rem .5rem;}.st-key-sidebar_menu {padding-top:.4rem;}}
 @media(prefers-reduced-motion:reduce) {.st-key-sidebar_menu [data-testid="stPageLink"] a {transition:none;}}

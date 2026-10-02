@@ -713,7 +713,7 @@ def public_content(cev=None, group_id=None):
 
 
 def main():
-    st.set_page_config(page_title="C-Paz", page_icon=":material/groups:", layout="wide",
+    st.set_page_config(page_title="C-Paz", page_icon=str(ROOT / "logo.png"), layout="wide",
                        initial_sidebar_state="auto")
     db.initialize()
     content = load_content()
