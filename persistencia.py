@@ -163,7 +163,7 @@ def connection_error(error,url=None):
         reason='O pooler não reconheceu o usuário ou projeto. Confira a conexão Session pooler.'
     elif code=='53300' or any(term in message for term in ('max client connections','too many clients','maxclientsinsessionmode','max clients reached')):
         reason='O pooler atingiu o limite de conexões. Feche instâncias ociosas e tente novamente.'
-    elif 'could not translate host name' in message or 'name or service not known' in message or 'nodename nor servname' in message:
+    elif any(term in message for term in ('could not translate host name','name or service not known','nodename nor servname','failed to resolve host','no address associated with hostname')):
         reason='Não foi possível resolver o endereço do banco (DNS).'
     elif 'timeout' in message or 'timed out' in message:
         reason='A conexão com o banco excedeu o tempo limite. Confira acesso à rede e Session pooler.'
