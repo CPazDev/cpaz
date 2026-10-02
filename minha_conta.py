@@ -5,6 +5,7 @@ import streamlit as st
 import access
 import database as db
 import perfis
+import avisos
 
 
 def _ui():
@@ -98,6 +99,8 @@ def personal_page():
                 "instagram":"Instagram", "endereco":"Endereço", "nascimento":"Data de nascimento", "acompanhador":"Acompanhador",
                 "ministerio":"Ministério", "email":"E-mail", "genero":"Gênero", "servico":"Serviço", "funcao_servico":"Função no serviço",
                 "eh_comunidade":"Pertence à comunidade", "ativo":"Ativo"}, "")
+    st.subheader("Meus avisos", icon=":material/campaign:")
+    avisos.render(st.user.to_dict(), member["cev"], member["grupo_id"], st.session_state["content"]["avisos"])
     with st.container(border=True):
         st.subheader("Meus acompanhamentos", icon=":material/diversity_1:")
         left, right = st.columns(2)

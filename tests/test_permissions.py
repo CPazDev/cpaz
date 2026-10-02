@@ -181,7 +181,7 @@ class PermissionsTests(unittest.TestCase):
         app = self.app(self.responsible)
         self.assertEqual(app.selectbox(key="cev_sidebar").options, ["Itarema"])
         self.assertIn("Aviso do meu grupo", [w.value for w in app.subheader])
-        self.assertNotIn("Aviso de CEv", [w.value for w in app.subheader])
+        self.assertIn("Aviso de CEv", [w.value for w in app.subheader])
         self.page(app, "group")
         picker = app.selectbox(key="group_page_picker")
         self.assertEqual(picker.value, self.group)

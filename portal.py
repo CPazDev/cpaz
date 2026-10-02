@@ -19,6 +19,7 @@ import edicao
 import diretorio
 import navegacao
 import minha_conta
+import avisos
 
 ROOT = Path(__file__).resolve().parent
 
@@ -695,19 +696,7 @@ def public_content(cev=None, group_id=None):
     user = access.profile(st.user.to_dict())
     if user and user["nivel"] == "Responsável de grupo":
         cev, group_id = user["cev"], user["grupo_id"]
-    notices = db.publications("notices", cev, group_id)
-    for notice in notices:
-        with st.container(border=True):
-            st.subheader(notice["titulo"])
-            if notice["foto"]:
-                st.image(notice["foto"], width="stretch")
-            st.write(notice["texto"])
-    configured = st.session_state["content"]["avisos"] if cev is None and group_id is None else []
-    for notice in configured:
-        with st.container(border=True):
-            st.write(notice)
-    if not notices and not configured:
-        st.info("Nenhum aviso publicado.")
+    avisos.render(st.user.to_dict(), cev, group_id, st.session_state["content"]["avisos"])
     st.subheader("Retiros e eventos", icon=":material/event:")
     eventos.cards(cev, group_id)
 

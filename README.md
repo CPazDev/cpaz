@@ -23,7 +23,7 @@ em um servidor com suporte a Python/Streamlit.
 ## Funcionalidades
 
 - Início com avisos gerais e seleção de CEv/Irradiação.
-- Páginas públicas de CEv e grupo com avisos, retiros e eventos.
+- Páginas de CEv e grupo com avisos públicos gerais e do CEv, além de retiros e eventos. Avisos de grupo são privados.
 - Modos claro, escuro e automático pelo menu ⋮: **Light**, **Dark** ou **System**.
 - Login Google integrado com `st.login`, `st.user` e `st.logout`.
 - Autorização de contas e definição de nível de acesso dentro do portal.
@@ -120,6 +120,14 @@ as respostas já recebidas.
 Edite a lista `cevs` em `conteudo.json` com os nomes determinados por você.
 A lista já contém os nove nomes enviados pelo usuário. A lista `avisos`
 permite textos gerais iniciais; avisos também podem ser publicados pela interface.
+
+Avisos seguem a hierarquia **Geral → CEv → Grupo**. Gerais aparecem em todos os
+CEvs e grupos; os do CEv aparecem também em todos os grupos dessa unidade.
+Esses dois destinos são públicos. Avisos destinados a um grupo são privados:
+apenas contas Google verificadas vinculadas a uma pessoa desse grupo ou a gestão
+autorizada podem consultá-los. Uma conta vinculada recebe avisos gerais, do seu
+CEv e do seu grupo na seção **Meus avisos** em **Minhas informações**, mesmo sem
+permissão de gestão. Trocar de grupo ou retirar o vínculo atualiza esse acesso.
 `campos_pessoa_aprovados` já está habilitado e não precisa ser alterado.
 
 ## Ativar o Google
@@ -171,10 +179,10 @@ administradores nem contas de outro CEv. A concessão de exclusão continua rest
 
 | Perfil | Permissões |
 | --- | --- |
-| Público, sem login | Consulta avisos, retiros e eventos; usa inscrições públicas e pedidos de sua própria inscrição; envia testemunhos para moderação |
+| Público, sem login | Consulta avisos gerais e de CEv, retiros e eventos; usa inscrições públicas e pedidos de sua própria inscrição; envia testemunhos para moderação |
 | Administrador | Gestão completa e autorização de contas |
 | Gestor de CEv | Cadastros, grupos, registros e publicações do seu CEv; concede acesso de gestor ou responsável de grupo no próprio CEv |
-| Responsável de grupo | Consulta limitada ao seu grupo; edita o grupo e seus registros; cria e gerencia avisos, eventos e retiros destinados ao próprio grupo |
+| Responsável de grupo | Consulta o próprio grupo e os avisos públicos gerais e do CEv; edita o grupo e seus registros; cria e gerencia avisos, eventos e retiros destinados ao próprio grupo |
 
 Cadastros de pessoas e registros internos não aparecem ao público.
 Inscrições e pedidos recebidos são visíveis somente na gestão do evento.
