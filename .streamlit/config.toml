@@ -1,10 +1,22 @@
 [theme]
 base = "light"
+font = "sans serif"
+
+[theme.light]
 primaryColor = "#177d73"
 backgroundColor = "#f8fafc"
 secondaryBackgroundColor = "#ffffff"
 textColor = "#183b56"
-font = "sans serif"
+linkColor = "#177d73"
+borderColor = "#dce5eb"
+
+[theme.dark]
+primaryColor = "#5eead4"
+backgroundColor = "#0f172a"
+secondaryBackgroundColor = "#1e293b"
+textColor = "#e2e8f0"
+linkColor = "#5eead4"
+borderColor = "#334155"
 
 [server]
 headless = true

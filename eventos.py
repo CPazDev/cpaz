@@ -182,7 +182,7 @@ def event_style(event):
     ink_rgb = "255,255,255" if ink == "#ffffff" else "15,23,42"
     rgb_text = ",".join(str(c) for c in rgb)
     st.html(f'''<style>.st-key-event_shell {{
-        --ev-brand:{brand};--ev-end:{as_hex(end)};--ev-ink:{ink};--ev-accent:{as_hex(accent)};
+        --ev-brand:{brand};--ev-end:{as_hex(end)};--ev-ink:{ink};--ev-accent:color-mix(in srgb,{as_hex(accent)} 25%,currentColor);
         --ev-soft:rgba({rgb_text},.065);--ev-border:rgba({rgb_text},.16);
         --ev-line:rgba({ink_rgb},.28);--ev-faint:rgba({ink_rgb},.045);
     }}</style>''')

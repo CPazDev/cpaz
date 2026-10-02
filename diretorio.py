@@ -117,10 +117,10 @@ def cev(name, people, groups):
     key = "directory_" + name
     categories, group_lists = summary(people, groups)
     st.html("""<style>
-        .st-key-cev_indicators button {min-height:112px; border:1px solid #dce7e3;
-            border-radius:16px; background:#fff; padding:18px; justify-content:flex-start;}
-        .st-key-cev_indicators button:hover {border-color:#177d73; background:#f3faf7;}
-        .st-key-cev_indicators button p {text-align:left; color:#183b56; font-size:.95rem;}
+        .st-key-cev_indicators button {min-height:112px; border:1px solid color-mix(in srgb, currentColor 18%, transparent);
+            border-radius:16px; background:color-mix(in srgb, currentColor 3%, transparent); padding:18px; justify-content:flex-start;}
+        .st-key-cev_indicators button:hover {border-color:currentColor; background:color-mix(in srgb, currentColor 7%, transparent);}
+        .st-key-cev_indicators button p {text-align:left; color:inherit; font-size:.95rem;}
         .st-key-cev_indicators button strong {display:block; font-size:2rem; line-height:1.3; margin-bottom:6px;}
         </style>""")
     with st.container(key="cev_indicators"):

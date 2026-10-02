@@ -717,10 +717,10 @@ def main():
     st.html("""<style>
         .stMainBlockContainer {max-width: 1160px; padding-top: 5rem; padding-bottom: 3rem;}
         h1 {letter-spacing: -0.035em;} h3 {letter-spacing: -0.02em;}
-        [data-testid="stSidebar"] {border-right: 1px solid #e1e7ed;}
+        [data-testid="stSidebar"] {border-right: 1px solid color-mix(in srgb, currentColor 15%, transparent);}
         [data-testid="stVerticalBlockBorderWrapper"] {border-radius: 16px;}
-        .portal-brand {font-size: 1.4rem; font-weight: 750; color: #183b56; margin-bottom: .25rem;}
-        .portal-subtitle {color: #526777; font-size: .85rem; margin-bottom: 1.5rem;}
+        .portal-brand {font-size: 1.4rem; font-weight: 750; color: inherit; margin-bottom: .25rem;}
+        .portal-subtitle {color: color-mix(in srgb, currentColor 75%, transparent); font-size: .85rem; margin-bottom: 1.5rem;}
         @media(max-width:640px) {.stMainBlockContainer {padding-top:4rem;}}
         </style>""")
     with st.sidebar:
@@ -788,4 +788,5 @@ def main():
                 st.page_link(page)
         st.divider()
         st.caption("C-Paz · Grupos e comunidade")
+        st.caption("Aparência: no menu ⋮, escolha Light (claro), Dark (escuro) ou System (automático).")
     nav.run()

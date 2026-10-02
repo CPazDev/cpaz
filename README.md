@@ -24,6 +24,7 @@ em um servidor com suporte a Python/Streamlit.
 
 - Início com avisos gerais e seleção de CEv/Irradiação.
 - Páginas públicas de CEv e grupo com avisos, retiros e eventos.
+- Modos claro, escuro e automático pelo menu ⋮: **Light**, **Dark** ou **System**.
 - Login Google integrado com `st.login`, `st.user` e `st.logout`.
 - Autorização de contas e definição de nível de acesso dentro do portal.
 - Cadastros de grupo e membro/pastor/núcleo, com fotos.
