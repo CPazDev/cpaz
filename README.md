@@ -308,10 +308,12 @@ administradores iniciais. Avisos locais de ministério são privados; gerais sã
 ## Verificar
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe verificar.py
 ```
 
-Os testes usam um banco temporário, sem inserir dados no portal real.
+O verificador desativa a conexão de produção durante os testes, que usam bancos
+temporários sem inserir dados no portal real. Use esse comando mesmo quando
+o computador já estiver conectado ao Supabase.
 Cobrem cadastro pela interface, autorização, frequência, acompanhamentos,
 fotos, consulta pública, inscrições, isolamento de pedidos, moderação, migração,
 auto-vínculo pelo e-mail verificado e isolamento da consulta pessoal.

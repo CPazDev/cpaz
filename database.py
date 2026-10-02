@@ -355,13 +355,15 @@ def validate_target(destino, cev, grupo_id, ministerio_id=None):
     return cev, grupo_id if destino == "Grupo" else None
 
 
-def save_notice(titulo, texto, destino, cev=None, grupo_id=None, foto=None, foto_tipo=None, ministerio_id=None):
+def save_notice(titulo, texto, destino, cev=None, grupo_id=None, foto=None, foto_tipo=None, ministerio_id=None, *, conn=None):
     if not titulo.strip():
         raise ValueError("Informe o título do aviso.")
     cev, grupo_id = validate_target(destino, cev, grupo_id, ministerio_id)
-    return execute("""INSERT INTO notices (titulo,texto,destino,cev,grupo_id,foto,foto_tipo,publicado_em,ministerio_id)
-        VALUES (?,?,?,?,?,?,?,?,?)""", (titulo.strip(), texto.strip(), destino, cev, grupo_id, foto, foto_tipo, publication_time(),
-                                       ministerio_id if destino == 'Ministério' else None))
+    sql = """INSERT INTO notices (titulo,texto,destino,cev,grupo_id,foto,foto_tipo,publicado_em,ministerio_id)
+        VALUES (?,?,?,?,?,?,?,?,?)"""
+    params = (titulo.strip(), texto.strip(), destino, cev, grupo_id, foto, foto_tipo, publication_time(),
+              ministerio_id if destino == 'Ministério' else None)
+    return conn.execute(sql, params).lastrowid if conn is not None else execute(sql, params)
 
 
 def publication_time():
@@ -369,16 +371,18 @@ def publication_time():
 
 
 def save_event(titulo, tipo, inicio, termino, local, descricao, destino, cev, grupo_id,
-               capa, capa_tipo, cor, whatsapp, organizador, ministerio_id=None):
+               capa, capa_tipo, cor, whatsapp, organizador, ministerio_id=None, *, conn=None):
     if not titulo.strip() or tipo not in ("Evento", "Retiro"):
         raise ValueError("Informe o título e o tipo do evento/retiro.")
     if termino and termino < inicio:
         raise ValueError("A data de término não pode ser anterior à data de início.")
     cev, grupo_id = validate_target(destino, cev, grupo_id, ministerio_id)
-    return execute("""INSERT INTO events
+    sql = """INSERT INTO events
         (titulo,tipo,inicio,termino,local,descricao,destino,cev,grupo_id,capa,capa_tipo,cor,whatsapp,organizador,ministerio_id)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (titulo.strip(), tipo, inicio, termino, local.strip(), descricao.strip(),
-        destino, cev, grupo_id, capa, capa_tipo, cor, whatsapp, organizador, ministerio_id if destino == 'Ministério' else None))
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+    params = (titulo.strip(), tipo, inicio, termino, local.strip(), descricao.strip(),
+              destino, cev, grupo_id, capa, capa_tipo, cor, whatsapp, organizador, ministerio_id if destino == 'Ministério' else None)
+    return conn.execute(sql, params).lastrowid if conn is not None else execute(sql, params)
 
 
 def register(event_id, responses):

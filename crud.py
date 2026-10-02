@@ -101,10 +101,12 @@ def _allowed(conn, actor, table, row):
 
 
 def create_notice(claims, titulo, texto, destino, cev=None, grupo_id=None, foto=None, foto_tipo=None, ministerio_id=None):
-    actor = access.profile(claims)
-    if not access.can_manage_publication(actor, destino, cev, grupo_id, ministerio_id):
-        raise PermissionError("O destino do aviso está fora do seu acesso.")
-    return db.save_notice(titulo, texto, destino, cev, grupo_id, foto, foto_tipo, ministerio_id)
+    with db.connection() as conn:
+        conn.execute('BEGIN IMMEDIATE')
+        actor = access._locked_actor(conn, claims)
+        if not access.can_manage_publication(actor, destino, cev, grupo_id, ministerio_id):
+            raise PermissionError("O destino do aviso está fora do seu acesso.")
+        return db.save_notice(titulo, texto, destino, cev, grupo_id, foto, foto_tipo, ministerio_id, conn=conn)
 
 
 def share_event(claims, event_id, destino, cev=None, grupo_id=None, ministerio_id=None):
@@ -127,11 +129,13 @@ def share_event(claims, event_id, destino, cev=None, grupo_id=None, ministerio_i
 
 def create_event(claims, titulo, tipo, inicio, termino, local, descricao, destino, cev, grupo_id,
                  capa, capa_tipo, cor, whatsapp, ministerio_id=None):
-    actor = access.profile(claims)
-    if not access.can_manage_publication(actor, destino, cev, grupo_id, ministerio_id):
-        raise PermissionError("O destino do evento está fora do seu acesso.")
-    return db.save_event(titulo, tipo, inicio, termino, local, descricao, destino, cev, grupo_id,
-                         capa, capa_tipo, cor, whatsapp, actor["email"], ministerio_id)
+    with db.connection() as conn:
+        conn.execute('BEGIN IMMEDIATE')
+        actor = access._locked_actor(conn, claims)
+        if not access.can_manage_publication(actor, destino, cev, grupo_id, ministerio_id):
+            raise PermissionError("O destino do evento está fora do seu acesso.")
+        return db.save_event(titulo, tipo, inicio, termino, local, descricao, destino, cev, grupo_id,
+                             capa, capa_tipo, cor, whatsapp, actor["email"], ministerio_id, conn=conn)
 
 
 def list_records(claims, table, cev=None):

@@ -11,6 +11,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateTable
 import database as db
+from database import remote_settings
 import migrar_supabase
 import persistencia
 
@@ -32,8 +33,8 @@ class PortabilityTests(unittest.TestCase):
             notices=meta.tables['portal.notices']
             self.assertTrue(any(f.ondelete=='SET NULL' for f in notices.foreign_key_constraints))
     def test_cloud_does_not_fall_back_to_empty_sqlite(self):
-        with patch.dict(os.environ,{'CPAZ_REQUIRE_REMOTE':'true','CPAZ_DATABASE_URL':''}):
-            with self.assertRaises(RuntimeError):db.remote_settings()
+        with patch.dict(os.environ,{'CPAZ_REQUIRE_REMOTE':'true','CPAZ_DATABASE_URL':''}), patch('streamlit.secrets',{'database':{}}):
+            with self.assertRaises(RuntimeError):remote_settings()
 
 
 @unittest.skipUnless(os.environ.get('CPAZ_TEST_DATABASE_URL'),'PostgreSQL isolado não configurado neste ambiente.')

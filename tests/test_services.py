@@ -69,6 +69,14 @@ class ServicesTests(unittest.TestCase):
         self.assertTrue(access.can_view_person(access.profile(self.coordinator),db.people('Itarema')[0]))
         with self.assertRaises(PermissionError):model.save(self.coordinator,'ministry_meetings',self.other,{'data':'2026-09-01','detalhes':'','situacao':None})
         with self.assertRaises(PermissionError):crud.update(self.coordinator,'people',self.person,{'nome':'Mudado'})
+    def test_publication_creation_rechecks_permission_under_lock(self):
+        with patch.object(access,'_locked_actor',return_value=None) as checked:
+            with self.assertRaises(PermissionError):
+                crud.create_notice(self.coordinator,'Aviso','','Ministério','Itarema',ministerio_id=self.local)
+            with self.assertRaises(PermissionError):
+                crud.create_event(self.coordinator,'Evento','Evento','2026-11-01',None,'','','Ministério','Itarema',None,None,None,'#177d73','',ministerio_id=self.local)
+            self.assertEqual(checked.call_count,2)
+        self.assertFalse(db.query('SELECT * FROM notices'));self.assertFalse(db.query('SELECT * FROM events'))
     def test_public_general_and_private_local_notices(self):
         general=claims('geral@example.com');servicos.grant(self.admin,general['email'],self.root,'Coordenador')
         broad=crud.create_notice(general,'Geral do PJJ','','Ministério',ministerio_id=self.root)
