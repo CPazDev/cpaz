@@ -1,13 +1,14 @@
 """Persistência local dos campos aprovados pelo usuário."""
 
 from contextlib import contextmanager
-from datetime import date
+from datetime import date, datetime
 import hashlib
 import json
 import os
 from pathlib import Path
 import sqlite3
 import secrets
+from zoneinfo import ZoneInfo
 
 PHASES = ("Kerigma", "Filoteia", "Metanoia", "Martiria", "Santidade", "Permanente")
 WEEKDAYS = ("Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo")
@@ -84,7 +85,8 @@ def initialize():
         CREATE TABLE IF NOT EXISTS notices (
             id INTEGER PRIMARY KEY, titulo TEXT NOT NULL, texto TEXT NOT NULL DEFAULT '',
             destino TEXT NOT NULL CHECK(destino IN ('Geral','CEv/Irradiação','Grupo')),
-            cev TEXT, grupo_id INTEGER REFERENCES groups(id), foto BLOB, foto_tipo TEXT
+            cev TEXT, grupo_id INTEGER REFERENCES groups(id), foto BLOB, foto_tipo TEXT,
+            publicado_em TEXT, evento_id INTEGER REFERENCES events(id) ON DELETE SET NULL
         );
         CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY, titulo TEXT NOT NULL, tipo TEXT NOT NULL CHECK(tipo IN ('Evento','Retiro')),
@@ -141,6 +143,7 @@ def initialize():
                 conn.execute("PRAGMA foreign_keys = ON")
         # Campos aprovados para a importação. NULL conserva indicação ausente.
         additions = {
+            "notices": {"publicado_em": "TEXT", "evento_id": "INTEGER REFERENCES events(id) ON DELETE SET NULL"},
             "groups": {"data_inicio": "TEXT", "publico": "TEXT NOT NULL DEFAULT ''",
                        "ativo": "INTEGER CHECK(ativo IN (0,1))",
                        "neutro": "INTEGER NOT NULL DEFAULT 0 CHECK(neutro IN (0,1))"},
@@ -319,8 +322,12 @@ def save_notice(titulo, texto, destino, cev=None, grupo_id=None, foto=None, foto
     if not titulo.strip():
         raise ValueError("Informe o título do aviso.")
     cev, grupo_id = validate_target(destino, cev, grupo_id)
-    return execute("""INSERT INTO notices (titulo,texto,destino,cev,grupo_id,foto,foto_tipo)
-        VALUES (?,?,?,?,?,?,?)""", (titulo.strip(), texto.strip(), destino, cev, grupo_id, foto, foto_tipo))
+    return execute("""INSERT INTO notices (titulo,texto,destino,cev,grupo_id,foto,foto_tipo,publicado_em)
+        VALUES (?,?,?,?,?,?,?,?)""", (titulo.strip(), texto.strip(), destino, cev, grupo_id, foto, foto_tipo, publication_time()))
+
+
+def publication_time():
+    return datetime.now(ZoneInfo("America/Sao_Paulo")).isoformat(timespec="seconds")
 
 
 def save_event(titulo, tipo, inicio, termino, local, descricao, destino, cev, grupo_id,

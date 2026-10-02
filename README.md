@@ -128,6 +128,18 @@ apenas contas Google verificadas vinculadas a uma pessoa desse grupo ou a gestã
 autorizada podem consultá-los. Uma conta vinculada recebe avisos gerais, do seu
 CEv e do seu grupo na seção **Meus avisos** em **Minhas informações**, mesmo sem
 permissão de gestão. Trocar de grupo ou retirar o vínculo atualiza esse acesso.
+
+Novos avisos registram automaticamente a data e hora da publicação no fuso de
+São Paulo. Editar um aviso preserva essa data; avisos antigos sem a informação
+mostram **Data de publicação não registrada**.
+
+Na página de um evento/retiro, **Compartilhar no app** permite à gestão publicar
+um aviso com o título e um botão para abrir a página do evento. Os destinos
+seguem as permissões existentes: administrador pode publicar em qualquer destino,
+gestor no seu CEv e grupos, responsável no próprio grupo. O compartilhamento
+segue a visibilidade de avisos gerais, do CEv e privados de grupo, inclusive em
+**Minhas informações**. Se o evento for excluído, o aviso é preservado e o botão
+de acesso ao evento é removido.
 `campos_pessoa_aprovados` já está habilitado e não precisa ser alterado.
 
 ## Ativar o Google

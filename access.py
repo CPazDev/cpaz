@@ -111,9 +111,14 @@ def can_manage_publication(user, destino, cev=None, grupo_id=None):
 
 def can_view_publication(user, event):
     # A consulta pública é livre; a navegação de um responsável fica no seu grupo.
-    return bool(not user or user["nivel"] != "Responsável de grupo" or
-                (event["destino"] == "Grupo" and event["cev"] == user["cev"]
-                 and event["grupo_id"] == user["grupo_id"]))
+    if not user or user["nivel"] != "Responsável de grupo" or (
+            event["destino"] == "Grupo" and event["cev"] == user["cev"] and event["grupo_id"] == user["grupo_id"]):
+        return True
+    # Um aviso compartilhado para este público também permite abrir o evento.
+    return bool(db.query("""SELECT 1 FROM notices WHERE evento_id=? AND
+        (destino='Geral' OR (destino='CEv/Irradiação' AND cev=?)
+         OR (destino='Grupo' AND cev=? AND grupo_id=?))""",
+        (event["id"], user["cev"], user["cev"], user["grupo_id"])))
 
 
 def grant(claims, email, nivel, cev=None, grupo_id=None):

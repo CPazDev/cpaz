@@ -643,7 +643,7 @@ def deletion_permissions(user, grants):
                 saved("Permissão de exclusão concedida." if grant else "Permissão de exclusão retirada.")
 
 
-def publication_target():
+def publication_target(key_prefix=None):
     user = access.profile(st.user.to_dict())
     if not user:
         st.info("Entre com uma conta autorizada para publicar.")
@@ -657,16 +657,19 @@ def publication_target():
         return "Grupo", user["cev"], user["grupo_id"]
     admin = user["nivel"] == "Administrador"
     destino = st.selectbox("Destino", ["Geral", "CEv/Irradiação", "Grupo"] if admin else ["CEv/Irradiação", "Grupo"],
-                           index=None, placeholder="Selecione o destino")
+                           index=None, placeholder="Selecione o destino",
+                           key=key_prefix + "_destino" if key_prefix else None)
     cev, group_id = None, None
     if destino in ("CEv/Irradiação", "Grupo"):
         cevs = st.session_state["content"]["cevs"]
         options = cevs if admin else [user["cev"]] if user["cev"] in cevs else []
-        cev = st.selectbox("CEv/Irradiação de destino", options, index=None, placeholder="Selecione o CEv/Irradiação")
+        cev = st.selectbox("CEv/Irradiação de destino", options, index=None, placeholder="Selecione o CEv/Irradiação",
+                           key=key_prefix + "_cev" if key_prefix else None)
         if destino == "Grupo" and cev:
             groups = {g["id"]: g["nome"] for g in db.groups(cev)}
             group_id = st.selectbox("Grupo de destino", list(groups), index=None,
-                                   format_func=groups.get, placeholder="Selecione o grupo")
+                                   format_func=groups.get, placeholder="Selecione o grupo",
+                                   key=key_prefix + "_grupo" if key_prefix else None)
     return destino, cev, group_id
 
 

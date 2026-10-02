@@ -91,6 +91,24 @@ def create_notice(claims, titulo, texto, destino, cev=None, grupo_id=None, foto=
     return db.save_notice(titulo, texto, destino, cev, grupo_id, foto, foto_tipo)
 
 
+def share_event(claims, event_id, destino, cev=None, grupo_id=None):
+    if not isinstance(event_id, int) or isinstance(event_id, bool):
+        raise ValueError("Selecione um evento/retiro válido.")
+    with db.connection() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        actor = access._locked_actor(conn, claims)
+        if not access.can_manage_publication(actor, destino, cev, grupo_id):
+            raise PermissionError("O destino do compartilhamento está fora do seu acesso.")
+        event = _row(conn, "events", event_id)
+        if not access.can_view_publication(actor, event):
+            raise PermissionError("Sua conta não pode compartilhar este evento/retiro.")
+        target = {"destino": destino, "cev": cev, "grupo_id": grupo_id}
+        _target(conn, target)
+        return conn.execute("""INSERT INTO notices (titulo,texto,destino,cev,grupo_id,publicado_em,evento_id)
+            VALUES (?,?,?,?,?,?,?)""", (event["titulo"], "", target["destino"], target["cev"], target["grupo_id"],
+                                       db.publication_time(), event_id)).lastrowid
+
+
 def create_event(claims, titulo, tipo, inicio, termino, local, descricao, destino, cev, grupo_id,
                  capa, capa_tipo, cor, whatsapp):
     actor = access.profile(claims)
@@ -301,7 +319,7 @@ def dependencies(conn, table, record_id):
     related = {}
     for child in (*LABELS, "access_grants", "account_profiles"):
         for fk in conn.execute(f"PRAGMA foreign_key_list({child})"):
-            if fk["table"] == table:
+            if fk["table"] == table and fk["on_delete"] != "SET NULL":
                 count = conn.execute(f'SELECT count(*) FROM {child} WHERE "{fk["from"]}"=?', (record_id,)).fetchone()[0]
                 if count:
                     label = LABELS.get(child, "Perfis de usuário" if child == "account_profiles" else "Contas autorizadas")

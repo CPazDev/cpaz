@@ -151,6 +151,10 @@ def detail():
     event_style(event)
     with st.container(key="event_shell"):
         event_header(event)
+        message = st.session_state.pop("success_message", None)
+        if message:
+            st.success(message)
+        share_in_app(event)
         with st.container(key="event_testimonials"):
             public_testimonials(event)
         st.html('<div id="event-registration" class="ev-section-label">PARTICIPE</div>')
@@ -161,6 +165,26 @@ def detail():
                 registration(event)
             with tabs[1]:
                 public_requests(event)
+
+
+def share_in_app(event):
+    if not access.profile(st.user.to_dict()):
+        return
+    with st.popover("Compartilhar no app", icon=":material/share:"):
+        st.write(event["titulo"])
+        st.caption("Publique um aviso com acesso à página deste evento/retiro.")
+        target = ui().publication_target(key_prefix=f'event_share_{event["id"]}')
+        if target is None:
+            return
+        with st.form(f'event_share_form_{event["id"]}'):
+            submit = st.form_submit_button("Publicar compartilhamento", type="primary", disabled=target[0] is None)
+        if submit:
+            try:
+                crud.share_event(st.user.to_dict(), event["id"], *target)
+            except (ValueError, PermissionError) as exc:
+                st.error(str(exc))
+            else:
+                ui().saved("Evento/retiro compartilhado como aviso.")
 
 
 def _luminance(channels):
@@ -239,7 +263,7 @@ def event_header(event):
     url = event_url(event["id"])
     if url:
         share = "https://wa.me/?" + urlencode({"text": event["titulo"] + " " + url})
-        st.html(f'<div class="ev-share-row"><a class="ev-share" href="{escape(share, quote=True)}" target="_blank" rel="noopener noreferrer">{_icon("share")}Compartilhar evento</a></div>')
+        st.html(f'<div class="ev-share-row"><a class="ev-share" href="{escape(share, quote=True)}" target="_blank" rel="noopener noreferrer">{_icon("share")}Compartilhar no WhatsApp</a></div>')
 
 
 def public_requests(event):

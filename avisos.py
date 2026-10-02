@@ -1,9 +1,20 @@
 """Avisos em hierarquia, com consulta privada aos avisos de grupo."""
 
 import streamlit as st
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import access
 import database as db
+
+
+def publication_label(value):
+    if not value:
+        return "Data de publicação não registrada"
+    timestamp = datetime.fromisoformat(value)
+    if timestamp.tzinfo is not None:
+        timestamp = timestamp.astimezone(ZoneInfo("America/Sao_Paulo"))
+    return timestamp.strftime("Publicado em %d/%m/%Y às %H:%M")
 
 
 def visible(claims, cev=None, group_id=None):
@@ -40,12 +51,18 @@ def render(claims, cev=None, group_id=None, configured=()):
                 st.caption(f'{notice["cev"]} · Público')
             else:
                 st.caption(f'{notice["grupo"]} · Aviso restrito ao grupo')
+            st.caption(publication_label(notice["publicado_em"]))
             if notice["foto"]:
                 st.image(notice["foto"], width="stretch")
             st.write(notice["texto"])
+            if notice["evento_id"] is not None and st.button("Ver evento/retiro", icon=":material/event:",
+                                                           key=f'notice_event_open_{notice["id"]}'):
+                st.session_state["selected_event"] = notice["evento_id"]
+                st.switch_page(st.session_state["pages"]["event"])
     for text in configured:
         with st.container(border=True):
             st.caption("Geral · Público")
+            st.caption("Data de publicação não registrada")
             st.write(text)
     if not notices and not configured:
         st.info("Nenhum aviso publicado.")
