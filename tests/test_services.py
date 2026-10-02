@@ -116,6 +116,17 @@ class ServicesTests(unittest.TestCase):
             app._page_hash=app.session_state['pages']['service_access']._script_hash;app.run()
             app.selectbox(key='service_access_ministry').select(self.local).run()
             self.assertFalse(app.exception,[e.message for e in app.exception])
+    def test_general_pastoral_coordinator_can_open_approved_cev_forms(self):
+        general=claims('pastoreio-geral@example.com')
+        servicos.grant(self.admin,general['email'],self.pastoral,'Coordenador')
+        with patch.object(portal.st,'user',SimpleNamespace(to_dict=lambda:general)):
+            app=AppTest.from_file(str(Path(__file__).resolve().parents[1]/'app.py'),default_timeout=20).run()
+            for cev in ('Itarema','Paraipaba'):
+                app.selectbox(key='cev_sidebar').select(cev).run()
+                for page in ('group_create','person_create'):
+                    app._page_hash=app.session_state['pages'][page]._script_hash;app.run()
+                    self.assertFalse(app.exception,[e.message for e in app.exception])
+                    self.assertTrue(any(field.label=='Nome *' for field in app.text_input),(cev,page))
 
 
 if __name__=='__main__':unittest.main()

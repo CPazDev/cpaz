@@ -117,7 +117,7 @@ def connection(url):
     try:
         raw = engine(url).connect()
     except Exception as error:
-        raise RuntimeError(connection_error(error)) from None
+        raise RuntimeError(connection_error(error,url)) from None
     try:
         with raw.begin():
             raw.execute(text('SET LOCAL search_path TO portal'))
@@ -128,7 +128,30 @@ def connection(url):
         raw.close()
 
 
-def connection_error(error):
+def redacted_connection_detail(error,url):
+    """Remove credenciais e identificadores antes de resumir uma falha externa."""
+    from sqlalchemy.engine import make_url
+    from urllib.parse import quote,quote_plus
+    try:
+        address=make_url(url)
+    except Exception:
+        return 'Detalhe indisponível: formato da conexão inválido.'
+    detail=str(getattr(error,'orig',error))
+    private={url,address.password,address.username,address.host,address.database,*address.query.values()}
+    variants=set()
+    for value in private:
+        if isinstance(value,str) and value:
+            variants.update((value,quote(value,safe=''),quote_plus(value)))
+    for value in sorted(variants,key=len,reverse=True):
+        detail=detail.replace(value,'[privado]')
+    detail=re.sub(r'[A-Za-z][A-Za-z0-9+.-]*://[^\s\x27\x22]+','[conexão privada]',detail)
+    detail=re.sub(r'\b(?:\d{1,3}\.){3}\d{1,3}\b','[IP]',detail)
+    detail=re.sub(r'\b[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,}\b','[IP]',detail)
+    detail=re.sub(r'(?:password|passwd|pwd)\s*[:=]\s*[^\s,;]+','password=[privado]',detail,flags=re.I)
+    return ' '.join(detail.split())[:1200]
+
+
+def connection_error(error,url=None):
     """Classifica falhas sem registrar a URL, a senha ou o erro original."""
     original=getattr(error,'orig',error)
     code=getattr(original,'sqlstate',None)
@@ -166,4 +189,7 @@ def connection_error(error):
     category=type(original).__name__
     category=category if re.fullmatch(r'[A-Za-z_]{1,60}',category) else 'Erro'
     safe_code=code if isinstance(code,str) and re.fullmatch(r'[A-Z0-9]{5}',code) else 'ausente'
-    return 'Não foi possível conectar ao PostgreSQL. '+reason+f' [Tipo: {category}; SQLSTATE: {safe_code}]'
+    result='Não foi possível conectar ao PostgreSQL. '+reason+f' [Tipo: {category}; SQLSTATE: {safe_code}]'
+    if url and 'não classificada' in reason:
+        result+=' Detalhe sanitizado: '+redacted_connection_detail(error,url)
+    return result

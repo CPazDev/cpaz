@@ -30,6 +30,13 @@ class PortabilityTests(unittest.TestCase):
                                  ('unexpected postgresql://user:secret-password@example.com/db','não classificada')):
             result=persistencia.connection_error(Exception(message))
             self.assertIn(expected,result);self.assertNotIn('secret-password',result);self.assertNotIn('example.com',result)
+    def test_unknown_failure_removes_all_connection_identifiers(self):
+        url='postgresql://private-user:a%40b%3Ac@private-host.example.com:5432/private-db'
+        failure=Exception('failure '+url+' password=a@b:c private-user private-host.example.com private-db 10.20.30.40 option missing')
+        result=persistencia.connection_error(failure,url)
+        for value in ('a@b:c','a%40b%3Ac','private-user','private-host.example.com','private-db','10.20.30.40',url):
+            self.assertNotIn(value,result)
+        self.assertIn('option missing',result)
     def test_metadata_preserves_constraints_and_binary(self):
         with tempfile.TemporaryDirectory() as tmp,patch.object(db,'DATABASE',Path(tmp)/'db.sqlite3'):
             db.initialize()

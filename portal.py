@@ -129,7 +129,7 @@ def scope():
         st.info("Selecione um CEv/Irradiação na barra lateral para continuar.")
         return None
     user = access.profile(st.user.to_dict())
-    if user["nivel"] != "Administrador" and user["cev"] != name:
+    if user["cev"] != name and not access.can_manage_cev(user, name):
         st.info("Sua conta não possui acesso à gestão deste CEv/Irradiação.")
         return None
     st.caption(f"CEv/Irradiação: {name}")
@@ -267,7 +267,7 @@ def cev():
         return
     st.caption(name)
     user = access.profile(st.user.to_dict())
-    if user and user["nivel"] == "Responsável de grupo":
+    if user and user["nivel"] == "Responsável de grupo" and not access.can_manage_cev(user, name):
         if user["cev"] != name:
             st.info("Sua conta está limitada ao CEv e grupo autorizados.")
             return
