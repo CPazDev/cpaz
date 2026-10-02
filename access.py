@@ -22,11 +22,15 @@ def profile(claims):
     email = verified_email(claims)
     if not email:
         return None
+    import servicos
     if email in ADMIN_EMAILS:
-        return {"email": email, "nivel": "Administrador", "cev": None, "grupo_id": None}
+        return servicos.attach({"email": email, "nivel": "Administrador", "cev": None, "grupo_id": None}, email)
     grants = db.query("SELECT * FROM access_grants WHERE email = ?", (email,))
     if grants and grants[0]["nivel"] in LEVELS:
-        return grants[0]
+        return servicos.attach(grants[0], email)
+    service_actor = servicos.attach(None, email)
+    if service_actor:
+        return service_actor
     nome = claims.get("name", "")
     db.execute("""INSERT INTO access_requests (email,nome) VALUES (?,?)
         ON CONFLICT(email) DO UPDATE SET nome = excluded.nome""", (email, str(nome)))
@@ -34,8 +38,10 @@ def profile(claims):
 
 
 def can_manage_cev(user, cev):
+    import servicos
     return bool(user and (user["nivel"] == "Administrador"
-                         or (user["nivel"] == "Gestor de CEv" and user["cev"] == cev)))
+                         or (user["nivel"] == "Gestor de CEv" and user["cev"] == cev)
+                         or servicos.pastoral(user, cev)))
 
 
 def can_use_group(user, group):
@@ -55,7 +61,10 @@ def can_view_group_people(user, group):
 
 
 def can_view_person(user, person):
+    import servicos
     if can_manage_cev(user, person["cev"]):
+        return True
+    if servicos.can_view_person(user, person):
         return True
     if not user or user["nivel"] != "Responsável de grupo" or person["cev"] != user.get("cev"):
         return False
@@ -79,11 +88,12 @@ def _check_account_scope(actor, target):
 
 
 def _locked_actor(conn, claims):
+    import servicos
     email = verified_email(claims)
     if email in ADMIN_EMAILS:
-        return {"email": email, "nivel": "Administrador", "cev": None, "grupo_id": None}
+        return servicos.attach({"email": email, "nivel": "Administrador", "cev": None, "grupo_id": None}, email, conn)
     row = conn.execute("SELECT * FROM access_grants WHERE email=?", (email,)).fetchone() if email else None
-    return dict(row) if row and row["nivel"] in LEVELS else None
+    return servicos.attach(dict(row) if row and row["nivel"] in LEVELS else None, email, conn) if email else None
 
 
 def account_grants(claims):
@@ -96,7 +106,11 @@ def account_grants(claims):
         if r["cev"] == actor["cev"] and r["nivel"] in LEVELS[1:]]
 
 
-def can_manage_publication(user, destino, cev=None, grupo_id=None):
+def can_manage_publication(user, destino, cev=None, grupo_id=None, ministerio_id=None):
+    if destino == 'Ministério':
+        import ministerios, servicos
+        target = ministerios.ministry(ministerio_id)
+        return bool(target and target['cev'] == cev and grupo_id is None and servicos.can_manage(user, target))
     if not user or destino not in ("Geral", "CEv/Irradiação", "Grupo"):
         return False
     if user["nivel"] == "Administrador":
@@ -110,6 +124,12 @@ def can_manage_publication(user, destino, cev=None, grupo_id=None):
 
 
 def can_view_publication(user, event):
+    if user and event['destino'] == 'Ministério':
+        import ministerios, servicos
+        target=ministerios.ministry(event.get('ministerio_id'))
+        if target and (servicos.can_manage(user,target) or any(
+                v['parent_id']==target['id'] for v in user.get('servicos',()))):
+            return True
     # A consulta pública é livre; a navegação de um responsável fica no seu grupo.
     if not user or user["nivel"] != "Responsável de grupo" or (
             event["destino"] == "Grupo" and event["cev"] == user["cev"] and event["grupo_id"] == user["grupo_id"]):

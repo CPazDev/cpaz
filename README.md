@@ -3,9 +3,8 @@
 Site em Streamlit baseado em `codigo.py` e nas definições aprovadas na conversa.
 
 Para enviar o código ao GitHub e preparar a implantação no Streamlit Community
-Cloud, consulte [DEPLOY.md](DEPLOY.md). A implantação definitiva ainda exige
-adaptar o SQLite local para armazenamento persistente externo; a base e as
-credenciais do computador ficam fora do repositório.
+Cloud, consulte [DEPLOY.md](DEPLOY.md). O portal usa SQLite no computador e
+PostgreSQL/Supabase na nuvem; a base e as credenciais ficam fora do repositório.
 
 ## Executar
 
@@ -39,7 +38,9 @@ em um servidor com suporte a Python/Streamlit.
 - Pedidos extras com opções e quantidades, associados à inscrição.
 - Testemunhos com foto opcional e aprovação antes da publicação.
 - Gestão da página, inscrições, pedidos e testemunhos conforme o CEv ou grupo autorizado.
-- Dados e fotos gravados em SQLite em `dados/portal.sqlite3`.
+- Ministérios gerais e locais, participantes, encontros, frequência e acompanhamentos.
+- Permissões acumuláveis de Coordenador/Núcleo, limitadas ao ministério autorizado.
+- Dados e fotos gravados no SQLite local ou no PostgreSQL privado da nuvem.
 
 ## Campos aprovados
 
@@ -57,8 +58,10 @@ em um servidor com suporte a Python/Streamlit.
 
 Fases: Kerigma, Filoteia, Metanoia, Martiria, Santidade e Permanente.
 Categorias: Membro, Pastor e Núcleo. Presenças: Presente, Ausente e Liberado.
-Ministério é um campo de texto nesta etapa. Seus cadastros e registros próprios
-ficam para a evolução futura solicitada.
+Ministérios também possuem cadastros e registros próprios. Um ministério geral
+reúne os ministérios locais dos CEvs; avisos gerais chegam aos locais vinculados.
+Participações atuais alimentam o campo Ministério, preservando preenchimentos
+manuais na importação. Alterar esse texto não revoga participações ou acessos.
 
 ## Editar e excluir registros
 
@@ -275,8 +278,32 @@ preenchimentos manuais e não recria pessoas excluídas. Seu modo padrão simula
 
 Para gravar, use `--apply --expected-sha SHA256_DA_SIMULACAO`. A gravação cria backup
 e aplica o lote em uma transação. Situações de vínculo ausentes na origem ficam
-documentadas no relatório. Históricos, cadastros próprios de ministérios e
-permissões da planilha continuam para etapas posteriores.
+documentadas no relatório. Permissões da planilha são preservadas para revisão,
+sem conceder acesso automaticamente.
+
+## Importar toda a missão
+
+`importar_missao.py` lê os nove arquivos `CPaz - CEv.xlsx`, simula em uma cópia e
+registra pendências em `dados/importacoes`. Importa pessoas, grupos, ministérios,
+participações, históricos de grupo e ministério, avisos e vínculos mensais.
+As abas Registro CB e FrequenciaCB são excluídas. Campos extras ficam no arquivo
+de origem arquivado, sem criar novos campos no portal. Referências inválidas e
+presenças conflitantes ficam para revisão; não são inventados vínculos.
+
+```powershell
+.\.venv\Scripts\python.exe importar_missao.py
+.\.venv\Scripts\python.exe importar_missao.py --apply
+```
+
+A aplicação cria backup, verifica alterações concorrentes e aplica o lote em uma
+transação. Repetir preserva correções manuais e não recria pessoas excluídas.
+
+Em **Acessos de ministério**, uma conta pode receber vários vínculos. Coordenador
+ou Núcleo local gerencia somente seu ministério; o geral gerencia também os locais
+vinculados. Coordenadores delegam dentro do alcance autorizado; Núcleo não delega.
+Somente Coordenador de Pastoreio possui gestão pastoral ampla: no CEv local ou
+em toda a missão quando geral. Exclusão exige concessão explícita dos dois
+administradores iniciais. Avisos locais de ministério são privados; gerais são públicos.
 
 ## Verificar
 
@@ -290,6 +317,6 @@ fotos, consulta pública, inscrições, isolamento de pedidos, moderação, migr
 auto-vínculo pelo e-mail verificado e isolamento da consulta pessoal.
 O fluxo OAuth real deve ser testado após configurar as credenciais Google.
 
-Ao hospedar, mantenha `dados` em armazenamento persistente ou adapte a
-persistência ao banco do servidor. Faça cópias de segurança dessa pasta
-para preservar os cadastros e as fotos.
+Na nuvem, configure o PostgreSQL conforme [DEPLOY.md](DEPLOY.md). A configuração
+`require_remote = true` impede iniciar com um SQLite vazio se faltar a conexão.
+Guarde os backups privados para preservar cadastros e fotos.

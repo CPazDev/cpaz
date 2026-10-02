@@ -4,3 +4,5 @@ httpx==0.28.1
 Pillow==12.3.0
 toml==0.10.2
 tzdata==2026.4
+SQLAlchemy==2.0.54
+psycopg[binary]==3.3.6

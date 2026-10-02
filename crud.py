@@ -23,9 +23,9 @@ FIELDS = {
     "meetings": {"grupo_id", "data", "tema", "observacoes"},
     "attendance": {"encontro_id", "membro_id", "presenca"},
     "followups": {"grupo_id", "membro_id", "data", "acompanhador", "proximo_acompanhamento", "observacoes"},
-    "notices": {"titulo", "texto", "destino", "cev", "grupo_id", "foto", "foto_tipo"},
+    "notices": {"titulo", "texto", "destino", "cev", "grupo_id", "foto", "foto_tipo", "ministerio_id"},
     "events": {"titulo", "tipo", "inicio", "termino", "local", "descricao", "destino", "cev", "grupo_id",
-               "capa", "capa_tipo", "cor", "whatsapp"},
+               "capa", "capa_tipo", "cor", "whatsapp", "ministerio_id"},
     "registrations": {"respostas"},
     "event_requests": {"titulo", "descricao", "opcoes"},
     "request_orders": {"inscricao_id", "pedido_id", "opcao", "quantidade"},
@@ -62,6 +62,22 @@ def record_scope(conn, table, row):
     return record_scope(conn, "events", event)
 
 
+def _delete_allowed(conn, claims, actor, table, row):
+    if table in ('notices','events'):
+        publication = row
+    elif table in ('registrations','event_requests','testimonials'):
+        publication = _row(conn,'events',row['evento_id'])
+    elif table == 'request_orders':
+        publication = _row(conn,'events',_row(conn,'event_requests',row['pedido_id'])['evento_id'])
+    else:
+        publication = None
+    if publication and publication['destino'] == 'Ministério':
+        import ministerios, servicos
+        return servicos.can_delete(actor,ministerios.ministry(publication['ministerio_id'],conn),conn)
+    cev,group_id=record_scope(conn,table,row)
+    return access.can_delete(claims,cev,group_id)
+
+
 def _allowed(conn, actor, table, row):
     if not actor:
         return False
@@ -73,7 +89,7 @@ def _allowed(conn, actor, table, row):
         _, group_id = record_scope(conn, table, row)
         return access.can_use_group(actor, _row(conn, "groups", group_id))
     if table == "notices":
-        return access.can_manage_publication(actor, row["destino"], row["cev"], row["grupo_id"])
+        return access.can_manage_publication(actor, row["destino"], row["cev"], row["grupo_id"], row.get('ministerio_id'))
     if table == "events":
         event = row
     elif table == "request_orders":
@@ -81,41 +97,41 @@ def _allowed(conn, actor, table, row):
         event = _row(conn, "events", request["evento_id"])
     else:
         event = _row(conn, "events", row["evento_id"])
-    return access.can_manage_publication(actor, event["destino"], event["cev"], event["grupo_id"])
+    return access.can_manage_publication(actor, event["destino"], event["cev"], event["grupo_id"], event.get('ministerio_id'))
 
 
-def create_notice(claims, titulo, texto, destino, cev=None, grupo_id=None, foto=None, foto_tipo=None):
+def create_notice(claims, titulo, texto, destino, cev=None, grupo_id=None, foto=None, foto_tipo=None, ministerio_id=None):
     actor = access.profile(claims)
-    if not access.can_manage_publication(actor, destino, cev, grupo_id):
+    if not access.can_manage_publication(actor, destino, cev, grupo_id, ministerio_id):
         raise PermissionError("O destino do aviso está fora do seu acesso.")
-    return db.save_notice(titulo, texto, destino, cev, grupo_id, foto, foto_tipo)
+    return db.save_notice(titulo, texto, destino, cev, grupo_id, foto, foto_tipo, ministerio_id)
 
 
-def share_event(claims, event_id, destino, cev=None, grupo_id=None):
+def share_event(claims, event_id, destino, cev=None, grupo_id=None, ministerio_id=None):
     if not isinstance(event_id, int) or isinstance(event_id, bool):
         raise ValueError("Selecione um evento/retiro válido.")
     with db.connection() as conn:
         conn.execute("BEGIN IMMEDIATE")
         actor = access._locked_actor(conn, claims)
-        if not access.can_manage_publication(actor, destino, cev, grupo_id):
+        if not access.can_manage_publication(actor, destino, cev, grupo_id, ministerio_id):
             raise PermissionError("O destino do compartilhamento está fora do seu acesso.")
         event = _row(conn, "events", event_id)
         if not access.can_view_publication(actor, event):
             raise PermissionError("Sua conta não pode compartilhar este evento/retiro.")
-        target = {"destino": destino, "cev": cev, "grupo_id": grupo_id}
+        target = {"destino": destino, "cev": cev, "grupo_id": grupo_id, 'ministerio_id': ministerio_id}
         _target(conn, target)
-        return conn.execute("""INSERT INTO notices (titulo,texto,destino,cev,grupo_id,publicado_em,evento_id)
-            VALUES (?,?,?,?,?,?,?)""", (event["titulo"], "", target["destino"], target["cev"], target["grupo_id"],
-                                       db.publication_time(), event_id)).lastrowid
+        return conn.execute("""INSERT INTO notices (titulo,texto,destino,cev,grupo_id,publicado_em,evento_id,ministerio_id)
+            VALUES (?,?,?,?,?,?,?,?)""", (event["titulo"], "", target["destino"], target["cev"], target["grupo_id"],
+                                       db.publication_time(), event_id, ministerio_id)).lastrowid
 
 
 def create_event(claims, titulo, tipo, inicio, termino, local, descricao, destino, cev, grupo_id,
-                 capa, capa_tipo, cor, whatsapp):
+                 capa, capa_tipo, cor, whatsapp, ministerio_id=None):
     actor = access.profile(claims)
-    if not access.can_manage_publication(actor, destino, cev, grupo_id):
+    if not access.can_manage_publication(actor, destino, cev, grupo_id, ministerio_id):
         raise PermissionError("O destino do evento está fora do seu acesso.")
     return db.save_event(titulo, tipo, inicio, termino, local, descricao, destino, cev, grupo_id,
-                         capa, capa_tipo, cor, whatsapp, actor["email"])
+                         capa, capa_tipo, cor, whatsapp, actor["email"], ministerio_id)
 
 
 def list_records(claims, table, cev=None):
@@ -147,6 +163,14 @@ def _membership(conn, group_id, member_id):
 
 
 def _target(conn, row):
+    if row['destino'] == 'Ministério':
+        import ministerios
+        target = ministerios.ministry(row.get('ministerio_id'), conn)
+        if not target:
+            raise ValueError('Selecione o ministério de destino.')
+        row['cev'], row['grupo_id'] = target['cev'], None
+        return
+    row['ministerio_id'] = None
     if row["destino"] == "Geral":
         row["cev"], row["grupo_id"] = None, None
     elif row["destino"] not in ("CEv/Irradiação", "Grupo") or not row["cev"]:
@@ -196,7 +220,10 @@ def _validate(conn, table, old, row, actor=None):
         if pastors and (row["categoria"] != "Pastor" or any(g["cev"] != row["cev"] for g in pastors)):
             raise ValueError("Esta pessoa é pastor responsável. Atualize o responsável dos grupos antes de alterar a categoria ou o CEv.")
         if row["cev"] != old["cev"] and (conn.execute("SELECT 1 FROM attendance WHERE membro_id=?", (row["id"],)).fetchone()
-                or conn.execute("SELECT 1 FROM followups WHERE membro_id=?", (row["id"],)).fetchone()):
+                or conn.execute("SELECT 1 FROM followups WHERE membro_id=?", (row["id"],)).fetchone()
+                or conn.execute('SELECT 1 FROM ministry_members WHERE pessoa_id=?',(row['id'],)).fetchone()
+                or conn.execute('SELECT 1 FROM ministry_attendance WHERE pessoa_id=?',(row['id'],)).fetchone()
+                or conn.execute('SELECT 1 FROM ministry_followups WHERE pessoa_id=?',(row['id'],)).fetchone()):
             raise ValueError("Não é possível mudar o CEv de uma pessoa com histórico vinculado.")
     elif table in ("meetings", "followups"):
         _row(conn, "groups", row["grupo_id"])
@@ -291,6 +318,8 @@ def update(claims, table, record_id, changes):
         raise ValueError("Campos de edição inválidos.")
     try:
         with db.connection() as conn:
+            conn.execute('BEGIN IMMEDIATE')
+            actor = access._locked_actor(conn, claims)
             old = _row(conn, table, record_id)
             if not _allowed(conn, actor, table, old):
                 raise PermissionError("Sua conta não pode editar este registro.")
@@ -308,7 +337,7 @@ def update(claims, table, record_id, changes):
                 raise PermissionError("O novo destino está fora do seu nível de acesso.")
             keys = list(changes)
             if table in ("notices", "events"):
-                keys = list(dict.fromkeys([*keys, "cev", "grupo_id"]))
+                keys = list(dict.fromkeys([*keys, "cev", "grupo_id", 'ministerio_id']))
             conn.execute(f"UPDATE {table} SET " + ",".join(f"{k}=?" for k in keys) + " WHERE id=?",
                          (*[row[k] for k in keys], record_id))
     except sqlite3.IntegrityError:
@@ -317,7 +346,8 @@ def update(claims, table, record_id, changes):
 
 def dependencies(conn, table, record_id):
     related = {}
-    for child in (*LABELS, "access_grants", "account_profiles"):
+    from ministerios import TABLES
+    for child in (*LABELS, "access_grants", "account_profiles", *TABLES, 'service_grants'):
         for fk in conn.execute(f"PRAGMA foreign_key_list({child})"):
             if fk["table"] == table and fk["on_delete"] != "SET NULL":
                 count = conn.execute(f'SELECT count(*) FROM {child} WHERE "{fk["from"]}"=?', (record_id,)).fetchone()[0]
@@ -334,18 +364,20 @@ def deletion_info(claims, table, record_id):
         if not _allowed(conn, actor, table, row):
             return False, {}
         cev, group_id = record_scope(conn, table, row)
-        return access.can_delete(claims, cev, group_id), dependencies(conn, table, record_id)
+        return _delete_allowed(conn, claims, actor, table, row), dependencies(conn, table, record_id)
 
 
 def delete(claims, table, record_id):
     actor = access.profile(claims)
     try:
         with db.connection() as conn:
+            conn.execute('BEGIN IMMEDIATE')
+            actor = access._locked_actor(conn, claims)
             row = _row(conn, table, record_id)
             if not _allowed(conn, actor, table, row):
                 raise PermissionError("Sua conta não pode excluir este registro.")
             cev, group_id = record_scope(conn, table, row)
-            if not access.can_delete(claims, cev, group_id):
+            if not _delete_allowed(conn, claims, actor, table, row):
                 raise PermissionError("Sua conta não tem permissão de exclusão neste CEv ou grupo.")
             related = dependencies(conn, table, record_id)
             if related:
@@ -384,6 +416,6 @@ def update_fields(claims, event_id, fields):
             labels.add(field["label"].strip().casefold())
         if {field["id"] for field in previous} - ids:
             cev, group_id = record_scope(conn, "events", event)
-            if not access.can_delete(claims, cev, group_id):
+            if not _delete_allowed(conn, claims, actor, 'events', event):
                 raise PermissionError("A remoção de campos exige permissão de exclusão no destino do evento.")
         conn.execute("UPDATE events SET campos=? WHERE id=?", (json.dumps(fields, ensure_ascii=False), event_id))

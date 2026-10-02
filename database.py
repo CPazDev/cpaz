@@ -17,8 +17,29 @@ CATEGORIES = ("Membro", "Pastor", "Núcleo")
 DATABASE = Path(os.environ.get("CEV_DATABASE", str(Path(__file__).parent / "dados" / "portal.sqlite3")))
 
 
+def remote_settings():
+    url = os.environ.get('CPAZ_DATABASE_URL', '')
+    required = os.environ.get('CPAZ_REQUIRE_REMOTE', '').lower() in ('1', 'true')
+    try:
+        import streamlit as st
+        config = st.secrets.get('database', {})
+        url = url or config.get('url', '')
+        required = required or bool(config.get('require_remote', False))
+    except (FileNotFoundError, AttributeError):
+        pass
+    if required and not url:
+        raise RuntimeError('O banco remoto não foi configurado. Preencha database.url em Secrets.')
+    return url
+
+
 @contextmanager
 def connection():
+    url = remote_settings()
+    if url:
+        from persistencia import connection as remote_connection
+        with remote_connection(url) as conn:
+            yield conn
+        return
     DATABASE.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DATABASE, timeout=15)
     conn.row_factory = sqlite3.Row
@@ -31,6 +52,12 @@ def connection():
 
 
 def initialize():
+    if remote_settings():
+        with connection() as conn:
+            version = conn.execute('SELECT versao FROM schema_meta WHERE id=1').fetchone()
+            if not version or version[0] != 1:
+                raise RuntimeError('O banco precisa ser migrado antes de iniciar o portal.')
+        return
     with connection() as conn:
         conn.executescript("""
         CREATE TABLE IF NOT EXISTS people (
@@ -157,6 +184,8 @@ def initialize():
             for column, definition in columns.items():
                 if column not in existing:
                     conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+    from ministerios import initialize_schema
+    initialize_schema()
 
 
 def validate_details(data_inicio=None, nascimento=None, ativo=None, eh_comunidade=None):
@@ -304,11 +333,19 @@ def publications(table, cev=None, group_id=None):
         return query(f"SELECT * FROM {table} WHERE destino = 'Grupo' AND cev = ? AND grupo_id = ? ORDER BY id DESC",
                      (cev, group_id))
     if cev is not None:
-        return query(f"SELECT * FROM {table} WHERE destino = 'CEv/Irradiação' AND cev = ? ORDER BY id DESC", (cev,))
-    return query(f"SELECT * FROM {table} WHERE destino = 'Geral' ORDER BY id DESC")
+        return query(f"""SELECT * FROM {table} WHERE (destino = 'CEv/Irradiação' AND cev = ?)
+            OR (destino='Ministério' AND ministerio_id IN (SELECT id FROM ministries WHERE cev IS NULL)) ORDER BY id DESC""", (cev,))
+    return query(f"""SELECT * FROM {table} WHERE destino = 'Geral'
+        OR (destino='Ministério' AND ministerio_id IN (SELECT id FROM ministries WHERE cev IS NULL)) ORDER BY id DESC""")
 
 
-def validate_target(destino, cev, grupo_id):
+def validate_target(destino, cev, grupo_id, ministerio_id=None):
+    if destino == 'Ministério':
+        import ministerios
+        target = ministerios.ministry(ministerio_id)
+        if not target or target['cev'] != cev or grupo_id is not None:
+            raise ValueError('Selecione o ministério de destino.')
+        return cev, None
     if destino == "Geral":
         return None, None
     if destino not in ("CEv/Irradiação", "Grupo") or not cev:
@@ -318,12 +355,13 @@ def validate_target(destino, cev, grupo_id):
     return cev, grupo_id if destino == "Grupo" else None
 
 
-def save_notice(titulo, texto, destino, cev=None, grupo_id=None, foto=None, foto_tipo=None):
+def save_notice(titulo, texto, destino, cev=None, grupo_id=None, foto=None, foto_tipo=None, ministerio_id=None):
     if not titulo.strip():
         raise ValueError("Informe o título do aviso.")
-    cev, grupo_id = validate_target(destino, cev, grupo_id)
-    return execute("""INSERT INTO notices (titulo,texto,destino,cev,grupo_id,foto,foto_tipo,publicado_em)
-        VALUES (?,?,?,?,?,?,?,?)""", (titulo.strip(), texto.strip(), destino, cev, grupo_id, foto, foto_tipo, publication_time()))
+    cev, grupo_id = validate_target(destino, cev, grupo_id, ministerio_id)
+    return execute("""INSERT INTO notices (titulo,texto,destino,cev,grupo_id,foto,foto_tipo,publicado_em,ministerio_id)
+        VALUES (?,?,?,?,?,?,?,?,?)""", (titulo.strip(), texto.strip(), destino, cev, grupo_id, foto, foto_tipo, publication_time(),
+                                       ministerio_id if destino == 'Ministério' else None))
 
 
 def publication_time():
@@ -331,16 +369,16 @@ def publication_time():
 
 
 def save_event(titulo, tipo, inicio, termino, local, descricao, destino, cev, grupo_id,
-               capa, capa_tipo, cor, whatsapp, organizador):
+               capa, capa_tipo, cor, whatsapp, organizador, ministerio_id=None):
     if not titulo.strip() or tipo not in ("Evento", "Retiro"):
         raise ValueError("Informe o título e o tipo do evento/retiro.")
     if termino and termino < inicio:
         raise ValueError("A data de término não pode ser anterior à data de início.")
-    cev, grupo_id = validate_target(destino, cev, grupo_id)
+    cev, grupo_id = validate_target(destino, cev, grupo_id, ministerio_id)
     return execute("""INSERT INTO events
-        (titulo,tipo,inicio,termino,local,descricao,destino,cev,grupo_id,capa,capa_tipo,cor,whatsapp,organizador)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (titulo.strip(), tipo, inicio, termino, local.strip(), descricao.strip(),
-        destino, cev, grupo_id, capa, capa_tipo, cor, whatsapp, organizador))
+        (titulo,tipo,inicio,termino,local,descricao,destino,cev,grupo_id,capa,capa_tipo,cor,whatsapp,organizador,ministerio_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (titulo.strip(), tipo, inicio, termino, local.strip(), descricao.strip(),
+        destino, cev, grupo_id, capa, capa_tipo, cor, whatsapp, organizador, ministerio_id if destino == 'Ministério' else None))
 
 
 def register(event_id, responses):

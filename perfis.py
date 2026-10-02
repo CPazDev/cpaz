@@ -144,8 +144,12 @@ def personal(claims, today=None):
         attendance = [dict(row) for row in conn.execute("""SELECT e.data,e.tema,g.nome AS grupo,a.presenca
             FROM attendance a JOIN meetings e ON e.id=a.encontro_id JOIN groups g ON g.id=e.grupo_id
             WHERE a.membro_id=? ORDER BY e.data DESC,a.id DESC""", (member["id"],))]
+        ministry_attendance = [dict(r) for r in conn.execute('''SELECT e.data,m.nome AS ministerio,a.presenca
+            FROM ministry_attendance a JOIN ministry_meetings e ON e.id=a.registro_id
+            JOIN ministries m ON m.id=e.ministerio_id WHERE a.pessoa_id=? ORDER BY e.data DESC,a.id DESC''',(member['id'],))]
         followups = conn.execute("""SELECT count(CASE WHEN data>=? AND data<=? THEN 1 END) AS no_ano,
-            max(CASE WHEN data<=? THEN data END) AS ultima_data FROM followups WHERE membro_id=?""",
-            (f"{today.year}-01-01", today.isoformat(), today.isoformat(), member["id"])).fetchone()
-        return {"membro": dict(member), "frequencia": attendance,
+            max(CASE WHEN data<=? THEN data END) AS ultima_data FROM
+            (SELECT data FROM followups WHERE membro_id=? UNION ALL SELECT data FROM ministry_followups WHERE pessoa_id=?) own_followups""",
+            (f"{today.year}-01-01", today.isoformat(), today.isoformat(), member["id"],member['id'])).fetchone()
+        return {"membro": dict(member), "frequencia": attendance, 'frequencia_ministerios': ministry_attendance,
                 "acompanhamentos": dict(followups), "ano": today.year}

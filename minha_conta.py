@@ -109,6 +109,9 @@ def personal_page():
     st.subheader("Minha frequência", icon=":material/fact_check:")
     ui.records(data["frequencia"], {"data":"Data", "tema":"Encontro", "grupo":"Grupo/célula", "presenca":"Presença"},
                "Nenhuma frequência registrada para você.")
+    st.subheader('Minha frequência nos ministérios')
+    ui.records(data['frequencia_ministerios'],{'data':'Data','ministerio':'Ministério','presenca':'Presença'},
+               'Nenhuma frequência de ministério registrada para você.')
 
 
 def manage_links():

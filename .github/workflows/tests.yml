@@ -13,6 +13,22 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: cpaz_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: cpaz_ci_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      CPAZ_TEST_DATABASE_URL: postgresql+psycopg://postgres:cpaz_ci_test@localhost:5432/cpaz_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

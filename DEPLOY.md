@@ -1,91 +1,79 @@
-# Publicar no GitHub e no Streamlit Community Cloud
+﻿# Publicar o CPaz
 
-O projeto está preparado para versionar o código. O arquivo de entrada é `app.py`,
-a branch é `main` e a versão de Python usada na validação local é **3.14**.
-O repositório não inclui a base de dados local nem as credenciais Google.
+Repositório: https://github.com/CPazDev/cpaz — branch `main`, entrada `app.py`,
+Python **3.14**. Código e modelos de configuração são versionados. Planilhas,
+SQLite, fotos no banco, relatórios, backups e credenciais ficam fora do Git.
 
-## Enviar ao GitHub
+## Banco privado no Supabase
 
-Crie um repositório vazio no GitHub, sem adicionar README, licença ou `.gitignore`
-na criação. No PowerShell, dentro da pasta do projeto:
+O portal usa PostgreSQL pelo **Session pooler** com TLS. Os dados ficam no schema
+`portal`, sem habilitar esse schema na Data API. O aplicativo usa a conta limitada
+`cpaz_app`; a conta administrativa do banco serve somente para a migração.
+
+1. No projeto Supabase, abra **Connect → Session pooler** e copie a conexão.
+2. Para configurá-la localmente sem editar arquivos:
+
+   ```powershell
+   .\.venv\Scripts\python.exe -m streamlit run configurar_supabase.py --server.address localhost --server.port 8503
+   ```
+
+   Abra http://localhost:8503, cole a conexão e informe a senha do banco.
+   O assistente grava `.streamlit/secrets.supabase.toml`, ignorado pelo Git.
+3. Conclua as importações locais e pause gravações no portal antes da migração.
+   Execute primeiro a simulação e depois a aplicação:
+
+   ```powershell
+   .\.venv\Scripts\python.exe migrar_supabase.py --connection-file .streamlit/secrets.supabase.toml
+   .\.venv\Scripts\python.exe migrar_supabase.py --connection-file .streamlit/secrets.supabase.toml --apply
+   ```
+
+A migração recusa um schema `portal` já ocupado. Transfere todas as tabelas,
+fotos e vínculos, valida conteúdo e quantidades, mantém IDs e reinicia sequências.
+Tudo é aplicado numa transação. A configuração limitada fica em
+`.streamlit/secrets.supabase.runtime.toml`, também privada.
+
+## GitHub e testes
 
 ```powershell
-git status
-git remote add origin https://github.com/SEU-USUARIO/SEU-REPOSITORIO.git
+git remote add origin https://github.com/CPazDev/cpaz.git
+git add .
+git diff --cached --stat
+git commit -m "Preparar portal para Supabase e Community Cloud"
 git push -u origin main
 ```
 
-Substitua o endereço pelo do seu repositório. O primeiro commit local já contém
-os arquivos preparados. Para alterações futuras:
+Se `origin` já estiver configurado, não repita `remote add`. O GitHub Actions
+valida o portal com bancos temporários e PostgreSQL isolado, sem dados de produção.
+
+## Streamlit Community Cloud
+
+Em https://share.streamlit.io, escolha **Create app**, repositório `CPazDev/cpaz`,
+branch `main`, entrada `app.py` e Python **3.14** em **Advanced settings**.
+Anote a URL real `https://SEU-APP.streamlit.app`.
+
+Gere os Secrets privados preservando a integração Google já configurada:
 
 ```powershell
-git add .
-git diff --cached --stat
-git commit -m "Descreva a alteração"
-git push
+.\.venv\Scripts\python.exe configurar_nuvem.py --app-url https://SEU-APP.streamlit.app
 ```
 
-`dados/`, planilhas, backups, logs, ambiente virtual e credenciais são ignorados.
-O arquivo `.streamlit/config.toml`, os modelos de secrets e `requirements.txt`
-devem estar no Git. O GitHub Actions executa os testes em Linux quando houver
-push ou pull request; ele não usa o banco local nem credenciais de produção.
+Copie o conteúdo de `.streamlit/secrets.cloud.toml` somente para o campo
+**Secrets** do Community Cloud. Esse arquivo contém a conexão limitada e as
+credenciais Google; não publique nem cole na conversa. O segredo de cookie da
+nuvem é separado e permanece estável. `database.require_remote = true` evita
+iniciar com banco local vazio quando faltar a configuração.
 
-## Criar o aplicativo na nuvem
+No cliente OAuth Web da Google Auth Platform, adicione a URI
+`https://SEU-APP.streamlit.app/oauth2callback`. Preserve também
+`http://localhost:8502/oauth2callback`. A autorização de gestão continua no portal;
+a publicação do site permite consultar as páginas públicas sem login.
 
-Em [share.streamlit.io](https://share.streamlit.io), selecione **Create app** e
-informe seu repositório, branch **main** e arquivo **app.py**. Escolha o subdomínio
-do aplicativo. Em **Advanced settings**, selecione Python **3.14**.
-As dependências serão instaladas a partir de `requirements.txt` na raiz.
-A porta 8502 é usada localmente; a plataforma define a porta do servidor hospedado.
-
-## Login Google no site publicado
-
-1. No cliente OAuth Web da [Google Auth Platform](https://console.cloud.google.com/auth/clients),
-   adicione `https://SEU-APP.streamlit.app/oauth2callback` às URIs de redirecionamento.
-   Preserve também `http://localhost:8502/oauth2callback` para continuar usando o portal local.
-2. Abra `.streamlit/secrets.cloud.example.toml` e use sua estrutura em
-   **Advanced settings → Secrets**, ou **Settings → Secrets** após criar o app.
-   Preencha `client_id` e `client_secret` com os valores do cliente Google.
-   Substitua `SEU-APP` pela URL real; não use localhost nos secrets da nuvem.
-3. Gere um segredo de cookie separado para a nuvem e mantenha-o estável:
-
-   ```powershell
-   .\.venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(48))"
-   ```
-
-   Cole o resultado em `cookie_secret` somente no painel de Secrets.
-4. Enquanto o Google estiver em modo de teste, inclua os e-mails autorizados
-   como usuários de teste. Para permitir login de novas contas, configure a
-   publicação do cliente Google. A autorização de gestão permanece no portal.
-
-Não grave credenciais no GitHub. O arquivo `.streamlit/secrets.toml` local
-permanece com sua configuração atual e não deve ser enviado.
-
-## Banco de dados antes do uso definitivo
-
-O código atual usa **SQLite local** em `dados/portal.sqlite3`. O Community Cloud
-não garante persistência do armazenamento local. Reinícios e recriações podem
-perder cadastros, fotos, permissões, eventos e inscrições gravados nesse arquivo.
-
-Um clone do repositório inicia com banco vazio; as pessoas e grupos importados
-no computador não são enviados automaticamente. As duas contas administradoras
-iniciais continuam reconhecidas pelo código. Não publique a planilha ou o SQLite
-no Git para transferir os dados.
-
-Para uso definitivo, a etapa pendente é adaptar a persistência para um banco
-externo e migrar a base atual por um canal privado, incluindo fotos, permissões,
-perfis de usuário e vínculos com membros.
-As credenciais desse serviço também deverão ficar em Secrets. Definir apenas
-`CEV_DATABASE` muda o caminho do arquivo local; não conecta a um banco remoto.
-O projeto ainda não possui adaptador de banco remoto.
-
-Até essa etapa, uma implantação no Community Cloud serve para testar a interface,
-sem cadastrar dados que precisem ser preservados. A base local continua no computador.
+Após publicar, valide login Google, indicadores, fotos, inscrições e escopos de
+acesso. A configuração local atual permanece preservada.
 
 ## Referências oficiais
 
-- [Deploy e versão do Python](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/deploy)
-- [Dependências](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/app-dependencies)
-- [Secrets no Community Cloud](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/secrets-management)
-- [Autenticação Google](https://docs.streamlit.io/develop/tutorials/authentication/google)
-- [Conexões e persistência local](https://docs.streamlit.io/develop/concepts/connections/connecting-to-data)
+- [Implantar no Community Cloud](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/deploy)
+- [Secrets](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/secrets-management)
+- [Login Google](https://docs.streamlit.io/develop/tutorials/authentication/google)
+- [Conexão PostgreSQL no Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres)

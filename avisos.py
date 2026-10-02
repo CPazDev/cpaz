@@ -17,9 +17,25 @@ def publication_label(value):
     return timestamp.strftime("Publicado em %d/%m/%Y às %H:%M")
 
 
-def visible(claims, cev=None, group_id=None):
+def visible(claims, cev=None, group_id=None, ministry_id=None):
     clauses = ["n.destino='Geral'"]
     params = []
+    import ministerios, servicos
+    actor = access.profile(claims)
+    root_filter = ''
+    if ministry_id is not None:
+        selected = ministerios.ministry(ministry_id)
+        if selected:
+            root_filter = ' AND m.id=?'
+            params.append(selected['parent_id'] or selected['id'])
+    clauses.append("(n.destino='Ministério' AND n.ministerio_id IN (SELECT m.id FROM ministries m WHERE m.cev IS NULL"+root_filter+'))')
+    email = access.verified_email(claims)
+    linked_ids = {r['ministerio_id'] for r in db.query('''SELECT v.ministerio_id FROM ministry_members v
+        JOIN account_profiles p ON p.membro_id=v.pessoa_id WHERE p.email=? AND (v.ativo IS NULL OR v.ativo=1)''', (email,))} if email else set()
+    for m in db.query('SELECT * FROM ministries WHERE cev IS NOT NULL'):
+        if (ministry_id is None or m['id'] == ministry_id) and (cev is None or m['cev'] == cev) and (m['id'] in linked_ids or servicos.can_manage(actor, m)):
+            clauses.append("(n.destino='Ministério' AND n.ministerio_id=?)")
+            params.append(m['id'])
     groups = db.query("SELECT * FROM groups WHERE id=?", (group_id,)) if group_id is not None else []
     group = groups[0] if groups and (cev is None or groups[0]["cev"] == cev) else None
     if group and cev is None:
@@ -36,12 +52,12 @@ def visible(claims, cev=None, group_id=None):
         if access.can_use_group(actor, group) or linked:
             clauses.append("(n.destino='Grupo' AND n.cev=? AND n.grupo_id=?)")
             params.extend((group["cev"], group["id"]))
-    return db.query("SELECT n.*,g.nome AS grupo FROM notices n LEFT JOIN groups g ON g.id=n.grupo_id WHERE "
+    return db.query("SELECT n.*,g.nome AS grupo,m.nome AS ministerio FROM notices n LEFT JOIN groups g ON g.id=n.grupo_id LEFT JOIN ministries m ON m.id=n.ministerio_id WHERE "
                     + " OR ".join(clauses) + " ORDER BY n.id DESC", params)
 
 
-def render(claims, cev=None, group_id=None, configured=()):
-    notices = visible(claims, cev, group_id)
+def render(claims, cev=None, group_id=None, configured=(), ministry_id=None):
+    notices = visible(claims, cev, group_id, ministry_id)
     for notice in notices:
         with st.container(border=True):
             st.subheader(notice["titulo"])
@@ -49,6 +65,8 @@ def render(claims, cev=None, group_id=None, configured=()):
                 st.caption("Geral · Público")
             elif notice["destino"] == "CEv/Irradiação":
                 st.caption(f'{notice["cev"]} · Público')
+            elif notice['destino'] == 'Ministério':
+                st.caption(f'{notice["ministerio"]} · {notice["cev"] or "Geral · Público"}')
             else:
                 st.caption(f'{notice["grupo"]} · Aviso restrito ao grupo')
             st.caption(publication_label(notice["publicado_em"]))

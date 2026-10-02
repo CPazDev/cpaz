@@ -101,6 +101,12 @@ def _photo(row, column, key):
 
 
 def _target(actor, row, key):
+    import servicos
+    ministries = {m['id']: m for m in db.query('SELECT * FROM ministries ORDER BY nome') if servicos.can_manage(actor, m)}
+    if row['destino'] == 'Ministério':
+        chosen = _select('Ministério de destino', {i: m['nome']+' · '+(m['cev'] or 'Geral') for i,m in ministries.items()},
+                         row.get('ministerio_id'), key+'_ministry')
+        return {'destino': 'Ministério', 'ministerio_id': chosen, 'cev': ministries[chosen]['cev'] if chosen else None, 'grupo_id': None}
     if actor["nivel"] == "Responsável de grupo":
         st.caption("Destino: seu grupo autorizado.")
         return {"destino": "Grupo", "cev": actor["cev"], "grupo_id": actor["grupo_id"]}

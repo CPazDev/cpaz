@@ -27,7 +27,7 @@ def ui():
 
 def editable(event):
     profile = access.profile(st.user.to_dict())
-    return access.can_manage_publication(profile, event["destino"], event["cev"], event["grupo_id"])
+    return access.can_manage_publication(profile, event["destino"], event["cev"], event["grupo_id"], event.get('ministerio_id'))
 
 
 def create():
@@ -54,7 +54,8 @@ def create():
             if whatsapp.strip() and not (10 <= len(phone) <= 15):
                 raise ValueError("Informe o WhatsApp com código do país, DDD e número.")
             event_id = crud.create_event(st.user.to_dict(), titulo, tipo, inicio.isoformat(), termino.isoformat() if termino else None,
-                                     local, descricao, *target, raw, kind, cor, phone)
+                                     local, descricao, *target, raw, kind, cor, phone,
+                                     ministerio_id=getattr(target, 'ministerio_id', None))
         except (ValueError, PermissionError) as exc:
             st.error(str(exc))
         else:
@@ -180,7 +181,8 @@ def share_in_app(event):
             submit = st.form_submit_button("Publicar compartilhamento", type="primary", disabled=target[0] is None)
         if submit:
             try:
-                crud.share_event(st.user.to_dict(), event["id"], *target)
+                crud.share_event(st.user.to_dict(), event["id"], *target,
+                                 ministerio_id=getattr(target, 'ministerio_id', None))
             except (ValueError, PermissionError) as exc:
                 st.error(str(exc))
             else:

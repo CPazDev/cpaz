@@ -92,7 +92,9 @@ def authenticated():
 def visible_cevs():
     user = access.profile(st.user.to_dict())
     cevs = st.session_state["content"]["cevs"]
-    return cevs if not user or user["nivel"] == "Administrador" else [user["cev"]] if user["cev"] in cevs else []
+    if not user or user['nivel'] in ('Administrador','Serviço'):
+        return cevs
+    return [name for name in cevs if name == user['cev'] or access.can_manage_cev(user,name)]
 
 
 def open_public_group(key):
@@ -648,7 +650,7 @@ def publication_target(key_prefix=None):
     if not user:
         st.info("Entre com uma conta autorizada para publicar.")
         return None
-    if user["nivel"] == "Responsável de grupo":
+    if user["nivel"] == "Responsável de grupo" and not user.get('servicos'):
         groups = db.query("SELECT nome FROM groups WHERE id=? AND cev=?", (user["grupo_id"], user["cev"]))
         if not groups:
             st.info("O grupo autorizado não está disponível.")
@@ -656,17 +658,31 @@ def publication_target(key_prefix=None):
         st.caption(f'Destino: {user["cev"]} · {groups[0]["nome"]}')
         return "Grupo", user["cev"], user["grupo_id"]
     admin = user["nivel"] == "Administrador"
-    destino = st.selectbox("Destino", ["Geral", "CEv/Irradiação", "Grupo"] if admin else ["CEv/Irradiação", "Grupo"],
+    import servicos
+    ministries = [m for m in db.query('SELECT * FROM ministries ORDER BY nome,cev') if servicos.can_manage(user, m)]
+    options = ["Geral", "CEv/Irradiação", "Grupo"] if admin else ["CEv/Irradiação", "Grupo"] if user['nivel'] == 'Gestor de CEv' else ['Grupo'] if user['nivel']=='Responsável de grupo' else []
+    if ministries:
+        options.append('Ministério')
+    destino = st.selectbox("Destino", options,
                            index=None, placeholder="Selecione o destino",
                            key=key_prefix + "_destino" if key_prefix else None)
     cev, group_id = None, None
+    if destino == 'Ministério':
+        labels = {m['id']: m['nome']+' · '+(m['cev'] or 'Geral') for m in ministries}
+        chosen = st.selectbox('Ministério de destino', list(labels), format_func=labels.get, index=None,
+                              key=(key_prefix or 'publication')+'_ministry')
+        class Target(tuple):
+            pass
+        target = Target((destino, next((m['cev'] for m in ministries if m['id'] == chosen), None), None))
+        target.ministerio_id = chosen
+        return target
     if destino in ("CEv/Irradiação", "Grupo"):
         cevs = st.session_state["content"]["cevs"]
         options = cevs if admin else [user["cev"]] if user["cev"] in cevs else []
         cev = st.selectbox("CEv/Irradiação de destino", options, index=None, placeholder="Selecione o CEv/Irradiação",
                            key=key_prefix + "_cev" if key_prefix else None)
         if destino == "Grupo" and cev:
-            groups = {g["id"]: g["nome"] for g in db.groups(cev)}
+            groups = {g["id"]: g["nome"] for g in db.groups(cev) if access.can_use_group(user,g)}
             group_id = st.selectbox("Grupo de destino", list(groups), index=None,
                                    format_func=groups.get, placeholder="Selecione o grupo",
                                    key=key_prefix + "_grupo" if key_prefix else None)
@@ -687,7 +703,8 @@ def notice_create():
     if submit:
         try:
             raw, kind = photo_data(foto)
-            crud.create_notice(st.user.to_dict(), titulo, texto, *target, raw, kind)
+            crud.create_notice(st.user.to_dict(), titulo, texto, *target, raw, kind,
+                               ministerio_id=getattr(target, 'ministerio_id', None))
         except (ValueError, PermissionError) as exc:
             st.error(str(exc))
         else:
@@ -721,6 +738,8 @@ def main():
         @media(max-width:640px) {.stMainBlockContainer {padding-top:4rem;}}
         </style>""")
     pages = {
+        "ministries": st.Page(__import__('ministerios_ui').page, title="Ministérios", icon=":material/diversity_3:", url_path="ministerios"),
+        "service_access": st.Page(__import__('ministerios_ui').access_page, title="Acessos de serviços", icon=":material/key:", url_path="acessos-servicos"),
         "home": st.Page(home, title="Início", icon=":material/home:", default=True),
         "login": st.Page(login, title="Login", icon=":material/login:", url_path="login"),
         "cev": st.Page(cev, title="CEv/Irradiação", icon=":material/location_on:", url_path="cev"),
@@ -752,6 +771,11 @@ def main():
             sections["Cadastros"] = [pages["group_create"], pages["person_create"]]
         sections["Publicações"] = [pages["notice"], pages["event_create"], pages["event_manage"]]
         sections["Registros"] = [pages["meeting"], pages["attendance"], pages["followup"], pages["edit"]]
+        sections['Ministérios'] = [pages['ministries'], pages['service_access']]
+        if any(access.can_manage_cev(profile, name) for name in st.session_state['content']['cevs']):
+            sections['Cadastros'] = [pages['group_create'], pages['person_create']]
+    elif access.verified_email(st.user.to_dict()):
+        sections['Ministérios'] = [pages['ministries']]
     if access.can_manage_accounts(profile):
         sections["Administração"] = [pages["access"]]
     nav = st.navigation(sections, position="hidden")
