@@ -27,6 +27,8 @@ em um servidor com suporte a Python/Streamlit.
 - Modos claro, escuro e automático pelo menu ⋮: **Light**, **Dark** ou **System**.
 - Login Google integrado com `st.login`, `st.user` e `st.logout`.
 - Autorização de contas e definição de nível de acesso dentro do portal.
+- Menu lateral com gestão recolhível e perfil do usuário fixo no rodapé.
+- Nome, apelido, vínculo com membro e consulta das próprias informações.
 - Cadastros de grupo e membro/pastor/núcleo, com fotos.
 - Edição de todos os cadastros e registros existentes em **Editar registros**.
 - Exclusão mediante permissão explícita por CEv, grupo ou publicações gerais.
@@ -59,6 +61,33 @@ Ministério é um campo de texto nesta etapa. Seus cadastros e registros própri
 ficam para a evolução futura solicitada.
 
 ## Editar e excluir registros
+
+### Perfil e informações pessoais
+
+Após entrar com Google, abra **Meu perfil** no rodapé do menu lateral para editar
+nome e apelido. O apelido, quando preenchido, aparece no cartão do usuário.
+O nome do perfil não altera o nome no cadastro de membro.
+
+O próprio usuário pode usar **Vincular meu cadastro** quando o e-mail cadastrado
+no membro corresponde ao e-mail verificado da conta Google. O seletor mostra
+somente esses cadastros. Para e-mail ausente ou diferente, um administrador ou
+gestor do CEv pode definir o vínculo em **Gerenciar acessos → Vincular conta a um membro**.
+Cada membro pode estar vinculado a uma única conta. Gestores ficam limitados ao
+próprio CEv e não alteram contas administradoras ou vinculadas a outro CEv.
+
+**Minhas informações** mostra somente o cadastro, grupo/célula, ministérios e
+frequência do membro vinculado, além do número de acompanhamentos realizados
+no ano e da data do último acompanhamento. Datas futuras não entram nesse resumo;
+observações de encontros e acompanhamentos continuam restritas à gestão.
+Os dados pessoais são resolvidos pelo e-mail Google verificado; IDs enviados
+pela URL não selecionam outro membro. O grupo acompanha o cadastro atual.
+
+O vínculo libera a consulta pessoal, sem conceder permissões de gestão.
+Uma conta pode usar a área pessoal enquanto aguarda autorização de gestão.
+O próprio usuário também pode retirar seu vínculo. Antes de excluir um membro
+vinculado, é necessário revisar esse vínculo; a conta e seu nome/apelido são preservados.
+
+### Cadastros e registros
 
 Entre com sua conta Google e abra **Registros → Editar registros**. Selecione o tipo
 e o registro, altere os campos e clique em **Salvar alterações**. Também há atalhos
@@ -226,7 +255,8 @@ permissões da planilha continuam para etapas posteriores.
 
 Os testes usam um banco temporário, sem inserir dados no portal real.
 Cobrem cadastro pela interface, autorização, frequência, acompanhamentos,
-fotos, consulta pública, inscrições, isolamento de pedidos, moderação e migração.
+fotos, consulta pública, inscrições, isolamento de pedidos, moderação, migração,
+auto-vínculo pelo e-mail verificado e isolamento da consulta pessoal.
 O fluxo OAuth real deve ser testado após configurar as credenciais Google.
 
 Ao hospedar, mantenha `dados` em armazenamento persistente ou adapte a

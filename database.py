@@ -66,6 +66,10 @@ def initialize():
         CREATE TABLE IF NOT EXISTS access_requests (
             email TEXT PRIMARY KEY, nome TEXT NOT NULL DEFAULT ''
         );
+        CREATE TABLE IF NOT EXISTS account_profiles (
+            email TEXT PRIMARY KEY, nome TEXT NOT NULL DEFAULT '', apelido TEXT NOT NULL DEFAULT '',
+            membro_id INTEGER UNIQUE REFERENCES people(id)
+        );
         CREATE TABLE IF NOT EXISTS access_grants (
             email TEXT PRIMARY KEY, nivel TEXT NOT NULL, cev TEXT,
             grupo_id INTEGER REFERENCES groups(id)

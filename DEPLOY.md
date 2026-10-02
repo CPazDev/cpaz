@@ -73,7 +73,8 @@ iniciais continuam reconhecidas pelo código. Não publique a planilha ou o SQLi
 no Git para transferir os dados.
 
 Para uso definitivo, a etapa pendente é adaptar a persistência para um banco
-externo e migrar a base atual por um canal privado, incluindo fotos e permissões.
+externo e migrar a base atual por um canal privado, incluindo fotos, permissões,
+perfis de usuário e vínculos com membros.
 As credenciais desse serviço também deverão ficar em Secrets. Definir apenas
 `CEV_DATABASE` muda o caminho do arquivo local; não conecta a um banco remoto.
 O projeto ainda não possui adaptador de banco remoto.

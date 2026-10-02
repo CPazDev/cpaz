@@ -299,12 +299,12 @@ def update(claims, table, record_id, changes):
 
 def dependencies(conn, table, record_id):
     related = {}
-    for child in (*LABELS, "access_grants"):
+    for child in (*LABELS, "access_grants", "account_profiles"):
         for fk in conn.execute(f"PRAGMA foreign_key_list({child})"):
             if fk["table"] == table:
                 count = conn.execute(f'SELECT count(*) FROM {child} WHERE "{fk["from"]}"=?', (record_id,)).fetchone()[0]
                 if count:
-                    label = LABELS.get(child, "Contas autorizadas")
+                    label = LABELS.get(child, "Perfis de usuário" if child == "account_profiles" else "Contas autorizadas")
                     related[label] = related.get(label, 0) + count
     return related
 

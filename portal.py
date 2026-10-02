@@ -17,6 +17,8 @@ import crud
 import eventos
 import edicao
 import diretorio
+import navegacao
+import minha_conta
 
 ROOT = Path(__file__).resolve().parent
 
@@ -227,20 +229,22 @@ def home():
 
 
 def login():
-    header("Entrar no portal", "Acesso à área de gestão da comunidade.")
+    header("Entrar no portal", "Acesse seu perfil e os recursos autorizados da comunidade.")
     if authenticated():
         st.success("Você já está conectado.")
         st.page_link(st.session_state["pages"]["cev"], label="Acessar CEv/Irradiação")
+        st.page_link(st.session_state["pages"]["profile"], label="Meu perfil")
         return
     if st.user.to_dict().get("is_logged_in"):
         if access.verified_email(st.user.to_dict()):
-            st.info("Sua conta aguarda autorização de um administrador.")
+            st.info("Seu perfil pessoal está disponível. O acesso de gestão depende de autorização.")
+            st.page_link(st.session_state["pages"]["profile"], label="Meu perfil")
         else:
             st.error("Sua sessão expirou ou a conta não possui e-mail verificado.")
         st.button("Sair e trocar de conta", on_click=st.logout)
         return
     with st.container(width=460):
-        st.write("Use sua conta Google autorizada para acessar o portal.")
+        st.write("Use sua conta Google para acessar seu perfil. Recursos de gestão dependem de autorização.")
         ready = google_ready()
         canonical = canonical_login_url(st.context.url, auth_configuration().get("redirect_uri")) if ready else None
         if canonical:
@@ -586,6 +590,7 @@ def manage_access():
                     saved("Acesso revogado.")
     if admin:
         deletion_permissions(user, grants)
+    minha_conta.manage_links()
 
 
 def deletion_permissions(user, grants):
@@ -723,32 +728,6 @@ def main():
         .portal-subtitle {color: color-mix(in srgb, currentColor 75%, transparent); font-size: .85rem; margin-bottom: 1.5rem;}
         @media(max-width:640px) {.stMainBlockContainer {padding-top:4rem;}}
         </style>""")
-    with st.sidebar:
-        st.html('<div class="portal-brand">C-Paz</div>'
-                '<div class="portal-subtitle">Sua comunidade, conectada.</div>')
-        cevs = visible_cevs()
-        if cevs:
-            current = st.session_state.get("selected_cev")
-            if profile and profile["nivel"] != "Administrador" and current != profile["cev"]:
-                current = profile["cev"]
-                st.session_state["selected_cev"] = current
-                st.session_state.pop("cev_sidebar", None)
-                st.session_state.pop("selected_group", None)
-            if profile and profile["nivel"] == "Responsável de grupo":
-                st.session_state["selected_group"] = profile["grupo_id"]
-            index = cevs.index(current) if current in cevs else None
-            name = st.selectbox("CEv/Irradiação", cevs, index=index,
-                                placeholder="Selecione uma unidade", key="cev_sidebar")
-            if name != current:
-                st.session_state["selected_cev"] = name
-                st.session_state.pop("selected_group", None)
-                for key in ("group_page_picker", "meeting_group", "attendance_group", "followup_group"):
-                    st.session_state.pop(key, None)
-        else:
-            st.caption("CEv/Irradiação: nomes a definir")
-        if st.user.to_dict().get("is_logged_in"):
-            st.caption(f'Conectado: {st.user.to_dict().get("email", "Conta Google")}')
-            st.button("Sair", icon=":material/logout:", on_click=st.logout)
     pages = {
         "home": st.Page(home, title="Início", icon=":material/home:", default=True),
         "login": st.Page(login, title="Login", icon=":material/login:", url_path="login"),
@@ -766,12 +745,16 @@ def main():
         "event_create": st.Page(eventos.create, title="Criar evento/retiro", icon=":material/event_available:", url_path="criar-evento"),
         "event_manage": st.Page(eventos.manage, title="Gerenciar eventos", icon=":material/settings:", url_path="gerenciar-eventos"),
         "event": st.Page(eventos.detail, title="Evento/retiro", icon=":material/celebration:", url_path="evento"),
+        "profile": st.Page(minha_conta.profile_page, title="Meu perfil", icon=":material/manage_accounts:", url_path="meu-perfil"),
+        "personal": st.Page(minha_conta.personal_page, title="Minhas informações", icon=":material/person:", url_path="minhas-informacoes"),
     }
     st.session_state["pages"] = pages
     sections = {"Portal": [pages["home"], pages["login"]],
                 "Comunidade": [pages["cev"], pages["group"]],
                 "Eventos": [pages["event"]]}
     profile = access.profile(st.user.to_dict())
+    if access.verified_email(st.user.to_dict()):
+        sections["Minha área"] = [pages["profile"], pages["personal"]]
     if profile:
         if profile["nivel"] in ("Administrador", "Gestor de CEv"):
             sections["Cadastros"] = [pages["group_create"], pages["person_create"]]
@@ -780,13 +763,5 @@ def main():
     if access.can_manage_accounts(profile):
         sections["Administração"] = [pages["access"]]
     nav = st.navigation(sections, position="hidden")
-    with st.sidebar:
-        st.divider()
-        for section, section_pages in sections.items():
-            st.caption(section.upper())
-            for page in section_pages:
-                st.page_link(page)
-        st.divider()
-        st.caption("C-Paz · Grupos e comunidade")
-        st.caption("Aparência: no menu ⋮, escolha Light (claro), Dark (escuro) ou System (automático).")
+    navegacao.render(pages, sections, profile)
     nav.run()

@@ -1,0 +1,40 @@
+/* A navegação rola; o perfil continua visível no rodapé da barra lateral. */
+[data-testid="stSidebar"] {border-right:1px solid color-mix(in srgb,currentColor 12%,transparent);}
+[data-testid="stSidebar"] [data-testid="stSidebarContent"] {height:100dvh;display:flex;flex-direction:column;overflow:hidden;padding-inline:0;}
+[data-testid="stSidebarHeader"] {flex:0 0 auto;padding-bottom:.25rem;}
+[data-testid="stSidebarUserContent"] {flex:1;min-height:0;padding:1rem 1rem .8rem;overflow:hidden;}
+[data-testid="stSidebarUserContent"] > div,
+[data-testid="stSidebarUserContent"] > div > [data-testid="stVerticalBlock"],
+[data-testid="stSidebarUserContent"] > div > [data-testid="stVerticalBlock"] > div:has(> .st-key-sidebar_shell) {height:100%;min-height:0;}
+.st-key-sidebar_shell {height:100%;min-height:0;gap:0;}
+.st-key-sidebar_shell > div:has(.st-key-sidebar_menu) {flex:1;min-height:0;overflow:hidden;}
+.st-key-sidebar_menu {height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;gap:.7rem;padding:.8rem .15rem 1rem;scrollbar-width:thin;}
+.st-key-sidebar_shell > div:has(.st-key-sidebar_header),
+.st-key-sidebar_shell > div:has(.st-key-sidebar_account) {flex:0 0 auto;}
+.st-key-sidebar_header {gap:.7rem;padding:0 .2rem .9rem;border-bottom:1px solid color-mix(in srgb,currentColor 10%,transparent);}
+.sidebar-brand {display:flex;align-items:center;gap:12px;padding:0 0 .3rem;}
+.sidebar-symbol {display:grid;place-items:center;width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#177d73,#115e59);color:#fff;font-size:1.1rem;font-weight:800;box-shadow:0 5px 15px #177d7325;}
+.portal-brand {font-size:1.2rem;letter-spacing:-.025em;font-weight:750;line-height:1.25;margin:0;}
+.portal-subtitle {font-size:.72rem;line-height:1.6;color:color-mix(in srgb,currentColor 70%,transparent);margin:0;}
+.st-key-sidebar_menu [data-testid="stPageLink"] a {border-radius:12px;min-height:41px;padding:9px 12px;transition:background .15s;}
+.st-key-sidebar_menu [data-testid="stPageLink"] a:hover {background:color-mix(in srgb,currentColor 8%,transparent);}
+.st-key-sidebar_menu [data-testid="stPageLink"] p {font-size:.88rem;font-weight:550;}
+.sidebar-section {font-size:.64rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:color-mix(in srgb,currentColor 65%,transparent);padding:.6rem .7rem 0;}
+.st-key-sidebar_menu [data-testid="stExpander"] {border:0;background:transparent;border-radius:12px;}
+.st-key-sidebar_menu [data-testid="stExpander"] details > summary {padding:.5rem .7rem;}
+.st-key-sidebar_menu [data-testid="stExpander"] details > summary p {font-size:.84rem;font-weight:650;}
+.st-key-sidebar_menu [data-testid="stExpanderDetails"] {padding:0 0 .4rem .25rem;}
+.st-key-sidebar_account {gap:.55rem;border-top:1px solid color-mix(in srgb,currentColor 12%,transparent);padding:1rem .2rem .1rem;}
+.sidebar-profile {display:flex;align-items:center;gap:10px;min-width:0;}
+.sidebar-avatar {display:grid;place-items:center;flex:0 0 40px;height:40px;border-radius:13px;background:color-mix(in srgb,currentColor 9%,transparent);color:inherit;font-size:.82rem;font-weight:750;}
+.sidebar-person {min-width:0;flex:1;}
+.sidebar-person strong {display:block;font-size:.88rem;line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sidebar-person small {display:block;font-size:.7rem;line-height:1.6;opacity:.68;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sidebar-context {display:flex;flex-wrap:wrap;align-items:center;gap:5px 8px;font-size:.68rem;line-height:1.5;}
+.sidebar-role {border:1px solid color-mix(in srgb,currentColor 14%,transparent);padding:3px 7px;border-radius:6px;font-size:.62rem;font-weight:600;}
+.sidebar-group {opacity:.8;overflow-wrap:anywhere;}
+.st-key-sidebar_account [data-testid="stPageLink"] a {border-radius:9px;padding:7px 8px;}
+.st-key-sidebar_account [data-testid="stPageLink"] p,.st-key-sidebar_account button p {font-size:.8rem;}
+.sidebar-theme-hint {font-size:.65rem;line-height:1.4;opacity:.6;margin-top:.15rem;}
+@media(max-height:650px) {.st-key-sidebar_header {padding-bottom:.6rem;}.st-key-sidebar_account {padding-top:.6rem;}.st-key-sidebar_menu {padding-top:.4rem;}}
+@media(prefers-reduced-motion:reduce) {.st-key-sidebar_menu [data-testid="stPageLink"] a {transition:none;}}
