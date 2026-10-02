@@ -1,0 +1,15 @@
+[theme]
+base = "light"
+primaryColor = "#177d73"
+backgroundColor = "#f8fafc"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#183b56"
+font = "sans serif"
+
+[server]
+headless = true
+# Porta de desenvolvimento local; o Community Cloud define a porta de execução.
+port = 8502
+
+[browser]
+gatherUsageStats = false

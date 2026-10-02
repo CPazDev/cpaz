@@ -1,0 +1,6 @@
+streamlit==1.64.0
+Authlib==1.8.0
+httpx==0.28.1
+Pillow==12.3.0
+toml==0.10.2
+tzdata==2026.4
