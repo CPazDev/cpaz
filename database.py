@@ -136,9 +136,15 @@ def initialize():
             quantidade INTEGER NOT NULL CHECK(quantidade > 0), UNIQUE(pedido_id,inscricao_id,opcao)
         );
         CREATE TABLE IF NOT EXISTS testimonials (
-            id INTEGER PRIMARY KEY, evento_id INTEGER NOT NULL REFERENCES events(id),
-            nome TEXT NOT NULL, texto TEXT NOT NULL, foto BLOB, foto_tipo TEXT,
-            status TEXT NOT NULL DEFAULT 'Pendente' CHECK(status IN ('Pendente','Aprovado','Rejeitado'))
+            id INTEGER PRIMARY KEY,
+            evento_id INTEGER NOT NULL REFERENCES events(id),
+            nome TEXT NOT NULL,
+            texto TEXT NOT NULL,
+            foto BLOB,
+            foto_tipo TEXT,
+            curtidas INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'Aprovado'
+                CHECK(status IN ('Pendente','Aprovado','Rejeitado'))
         );
         """)
         group_columns = {row["name"] for row in conn.execute("PRAGMA table_info(groups)")}
@@ -433,5 +439,27 @@ def order_rows(event_id, registration_id=None):
 def save_testimonial(event_id, nome, texto, foto=None, foto_tipo=None):
     if not nome.strip() or not texto.strip():
         raise ValueError("Informe seu nome e o testemunho.")
-    return execute("INSERT INTO testimonials (evento_id,nome,texto,foto,foto_tipo) VALUES (?,?,?,?,?)",
-                   (event_id, nome.strip(), texto.strip(), foto, foto_tipo))
+
+    return execute(
+        """INSERT INTO testimonials
+           (evento_id, nome, texto, foto, foto_tipo, curtidas, status)
+           VALUES (?, ?, ?, ?, ?, 0, 'Aprovado')""",
+        (event_id, nome.strip(), texto.strip(), foto, foto_tipo)
+    )
+
+
+def like_testimonial(testimonial_id):
+    with connection() as conn:
+        conn.execute(
+            """UPDATE testimonials
+               SET curtidas = curtidas + 1
+               WHERE id = ? AND status = 'Aprovado'""",
+            (testimonial_id,)
+        )
+
+        row = conn.execute(
+            "SELECT curtidas FROM testimonials WHERE id = ?",
+            (testimonial_id,)
+        ).fetchone()
+
+        return row["curtidas"] if row else 0
