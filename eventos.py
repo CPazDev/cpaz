@@ -328,23 +328,32 @@ def public_testimonials(event):
     )
 
     if testimonials:
-        # Carrossel horizontal
-        with st.container(horizontal=True):
-            for testimony in testimonials:
 
+        # Carrossel horizontal
+        carousel = st.container(
+            horizontal=True,
+            horizontal_alignment="left",
+            vertical_alignment="top",
+            gap="medium"
+        )
+
+        for testimony in testimonials:
+
+            with carousel:
+
+                # Card individual
                 with st.container(
-                    width=360,
+                    width=330,
                     border=True
                 ):
 
-                    st.html('<div class="ev-quote" aria-hidden="true">“</div>')
-
-                    st.write(testimony["texto"])
-
+                    # FOTO + NOME
                     if testimony["foto"]:
                         avatar = (
                             f'<img src="{_image_url(testimony["foto"], testimony["foto_tipo"])}" '
-                            f'alt="Foto de {escape(testimony["nome"], quote=True)}">'
+                            f'alt="Foto de {escape(testimony["nome"], quote=True)}" '
+                            f'style="width:48px;height:48px;border-radius:50%;'
+                            f'object-fit:cover;">'
                         )
                     else:
                         initials = (
@@ -355,33 +364,64 @@ def public_testimonials(event):
                         )
 
                         avatar = (
-                            f'<span class="ev-avatar" aria-hidden="true">'
+                            f'<span style="width:48px;height:48px;'
+                            f'border-radius:50%;display:flex;'
+                            f'align-items:center;justify-content:center;'
+                            f'background:rgba(128,128,128,.18);'
+                            f'font-weight:600;">'
                             f'{escape(initials.upper())}'
                             f'</span>'
                         )
 
                     st.html(
-                        f'<div class="ev-author">'
-                        f'{avatar}'
-                        f'<span>{escape(testimony["nome"])}</span>'
-                        f'</div>'
+                        f"""
+                        <div style="
+                            display:flex;
+                            align-items:center;
+                            gap:12px;
+                            margin-bottom:16px;
+                        ">
+                            {avatar}
+                            <strong>
+                                {escape(testimony["nome"])}
+                            </strong>
+                        </div>
+                        """
                     )
 
+                    # TESTEMUNHO
+                    st.html(
+                        f"""
+                        <div style="
+                            font-size:15px;
+                            line-height:1.55;
+                            min-height:110px;
+                            margin-bottom:14px;
+                        ">
+                            “{escape(testimony["texto"])}”
+                        </div>
+                        """
+                    )
+
+                    # CURTIDA
                     liked_key = f"testimonial_liked_{testimony['id']}"
 
                     if liked_key not in st.session_state:
                         st.session_state[liked_key] = False
 
                     if st.session_state[liked_key]:
+
                         st.button(
                             f"❤️ {testimony['curtidas']}",
                             key=f"liked_{testimony['id']}",
                             disabled=True,
                             use_container_width=True
                         )
+
                     else:
+
                         if st.button(
-                            f"♡ {testimony['curtidas']}",
+                            f"🤍 {testimony['curtidas']}",
                             key=f"like_{testimony['id']}",
                             use_container_width=True
                         ):
@@ -397,6 +437,7 @@ def public_testimonials(event):
             '</div>'
         )
 
+    # ENVIO DE TESTEMUNHO
     with st.expander("Compartilhe seu testemunho"):
 
         st.write(
@@ -408,7 +449,11 @@ def public_testimonials(event):
             clear_on_submit=True
         ):
             nome = st.text_input("Nome *")
-            texto = st.text_area("Testemunho *")
+
+            texto = st.text_area(
+                "Testemunho *"
+            )
+
             foto = st.file_uploader(
                 "Foto (opcional)",
                 type=["jpg", "jpeg", "png", "webp"]
