@@ -312,39 +312,132 @@ def public_requests(event):
 def public_testimonials(event):
     st.html('<p class="ev-section-label">RELATOS DA COMUNIDADE</p>')
     st.header("Testemunhos")
-    approved = db.query("SELECT * FROM testimonials WHERE evento_id = ? AND status = 'Aprovado' ORDER BY id DESC",
-                        (event["id"],))
-    for start in range(0, len(approved), 2):
-        batch = approved[start:start + 2]
-        columns = st.columns(len(batch))
-        for column, testimony in zip(columns, batch):
-            with column, st.container(key=f'testimony_card_{testimony["id"]}'):
-                st.html('<div class="ev-quote" aria-hidden="true">“</div>')
-                st.write(testimony["texto"])
-                if testimony["foto"]:
-                    avatar = f'<img src="{_image_url(testimony["foto"], testimony["foto_tipo"])}" alt="Foto de {escape(testimony["nome"], quote=True)}">'
-                else:
-                    initials = "".join(word[0] for word in testimony["nome"].split()[:2]) or "—"
-                    avatar = f'<span class="ev-avatar" aria-hidden="true">{escape(initials.upper())}</span>'
-                st.html(f'<div class="ev-author">{avatar}<span>{escape(testimony["nome"])}</span></div>')
-    if not approved:
-        st.html('<div class="ev-empty">Nenhum testemunho publicado. Compartilhe sua experiência com a comunidade.</div>')
+
+    testimonials = db.query(
+        """
+        SELECT *
+        FROM testimonials
+        WHERE evento_id = ?
+          AND status = 'Aprovado'
+        ORDER BY
+            CASE WHEN foto IS NOT NULL THEN 0 ELSE 1 END,
+            curtidas DESC,
+            id DESC
+        """,
+        (event["id"],)
+    )
+
+    if testimonials:
+        # Carrossel horizontal
+        with st.container(horizontal=True):
+            for testimony in testimonials:
+
+                with st.container(
+                    width=360,
+                    border=True
+                ):
+
+                    st.html('<div class="ev-quote" aria-hidden="true">“</div>')
+
+                    st.write(testimony["texto"])
+
+                    if testimony["foto"]:
+                        avatar = (
+                            f'<img src="{_image_url(testimony["foto"], testimony["foto_tipo"])}" '
+                            f'alt="Foto de {escape(testimony["nome"], quote=True)}">'
+                        )
+                    else:
+                        initials = (
+                            "".join(
+                                word[0]
+                                for word in testimony["nome"].split()[:2]
+                            ) or "—"
+                        )
+
+                        avatar = (
+                            f'<span class="ev-avatar" aria-hidden="true">'
+                            f'{escape(initials.upper())}'
+                            f'</span>'
+                        )
+
+                    st.html(
+                        f'<div class="ev-author">'
+                        f'{avatar}'
+                        f'<span>{escape(testimony["nome"])}</span>'
+                        f'</div>'
+                    )
+
+                    liked_key = f"testimonial_liked_{testimony['id']}"
+
+                    if liked_key not in st.session_state:
+                        st.session_state[liked_key] = False
+
+                    if st.session_state[liked_key]:
+                        st.button(
+                            f"❤️ {testimony['curtidas']}",
+                            key=f"liked_{testimony['id']}",
+                            disabled=True,
+                            use_container_width=True
+                        )
+                    else:
+                        if st.button(
+                            f"♡ {testimony['curtidas']}",
+                            key=f"like_{testimony['id']}",
+                            use_container_width=True
+                        ):
+                            db.like_testimonial(testimony["id"])
+                            st.session_state[liked_key] = True
+                            st.rerun()
+
+    else:
+        st.html(
+            '<div class="ev-empty">'
+            'Nenhum testemunho publicado. '
+            'Compartilhe sua experiência com a comunidade.'
+            '</div>'
+        )
+
     with st.expander("Compartilhe seu testemunho"):
-        st.write("Seu testemunho será publicado após a aprovação da organização.")
-        with st.form(f'testimony_{event["id"]}', clear_on_submit=True):
+
+        st.write(
+            "Seu testemunho será publicado automaticamente após o envio."
+        )
+
+        with st.form(
+            f'testimony_{event["id"]}',
+            clear_on_submit=True
+        ):
             nome = st.text_input("Nome *")
             texto = st.text_area("Testemunho *")
-            foto = st.file_uploader("Foto (opcional)", type=["jpg", "jpeg", "png", "webp"])
-            submit = st.form_submit_button("Enviar testemunho")
+            foto = st.file_uploader(
+                "Foto (opcional)",
+                type=["jpg", "jpeg", "png", "webp"]
+            )
+
+            submit = st.form_submit_button(
+                "Enviar testemunho"
+            )
+
     if submit:
         try:
             raw, kind = ui().photo_data(foto)
-            db.save_testimonial(event["id"], nome, texto, raw, kind)
+
+            db.save_testimonial(
+                event["id"],
+                nome,
+                texto,
+                raw,
+                kind
+            )
+
         except ValueError as exc:
             st.error(str(exc))
-        else:
-            st.success("Testemunho recebido e enviado para aprovação.")
 
+        else:
+            st.success(
+                "Testemunho publicado! Obrigado por compartilhar sua experiência."
+            )
+            st.rerun()
 
 def manage():
     ui().header("Gerenciar eventos", "Configure as inscrições e acompanhe seus eventos/retiros.")
